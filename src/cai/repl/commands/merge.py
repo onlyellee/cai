@@ -11,6 +11,7 @@ from rich.console import Console
 
 from cai.repl.commands.base import Command, register_command
 from cai.repl.commands.parallel import ParallelCommand
+from cai.i18n import t
 
 console = Console()
 
@@ -49,12 +50,12 @@ class MergeCommand(Command):
         from rich.panel import Panel
         
         # First, perform the merge all operation
-        console.print("[cyan]Merging all agents by default...[/cyan]\n")
+        console.print(f"[cyan]{t('merge_default_msg')}[/cyan]\n")
         merge_result = self._parallel_cmd.handle_merge(["all"])
         
         # Then show the help menu
         console.print("\n")
-        help_text = """[bold cyan]Merge Command Help[/bold cyan]
+        help_text = f"""[bold cyan]{t('merge_help_title')}[/bold cyan]
 
 [bold]Usage:[/bold]
   /merge                      → Merge all agents (default)

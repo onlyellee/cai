@@ -136,7 +136,7 @@ def cleanup_all_streaming_resources():
         }
 
     except Exception as e:
-        print(f"\nError during streaming cleanup: {e}", file=sys.stderr)
+        print(f"\n{t('error_streaming_cleanup', error=str(e))}", file=sys.stderr)
     finally:
         _cleanup_in_progress = False
 
@@ -2152,7 +2152,7 @@ def create_agent_streaming_context(agent_name, counter, model):
         # If rich display fails, return None and log the error
         import sys
 
-        print(f"Error creating streaming context: {e}", file=sys.stderr)
+        print(t('error_creating_stream', error=str(e)), file=sys.stderr)
         return None
 
 
@@ -3142,7 +3142,7 @@ def cli_print_tool_output(
             # Create a small panel showing just the command being executed
             command_panel = Panel(
                 f"[bold cyan]{command_text}[/bold cyan]",
-                title=f"[bold blue]{agent_name} - Executing Command[/bold blue]",
+                title=f"[bold blue]{t('executing_command', agent_name=agent_name)}[/bold blue]",
                 border_style="blue",
                 padding=(0, 1),
                 box=ROUNDED,
@@ -3375,7 +3375,7 @@ def _create_tool_panel_content(tool_name, args, output, execution_info=None, tok
         output_str = str(output)
         first_part = output_str[:5000]
         last_part = output_str[-5000:]
-        output = f"{first_part}\n\n... TRUNCATED ...\n\n{last_part}"
+        output = f"{first_part}\n\n{t('truncated')}\n\n{last_part}"
 
     # Check if this is a handoff (transfer to another agent)
     is_handoff = tool_name.startswith("transfer_to_")
@@ -3740,7 +3740,7 @@ def _print_simple_tool_output(tool_name, args, output, execution_info=None, toke
             # Manually create formatted output similar to _create_token_display
             print(
                 color(
-                    f"  Current: I:{interaction_input_tokens} O:{interaction_output_tokens} R:{interaction_reasoning_tokens}",
+                    f"  {t('token_current', input=interaction_input_tokens, output=interaction_output_tokens, reasoning=interaction_reasoning_tokens)}",
                     fg="cyan",
                 )
             )
@@ -3762,7 +3762,7 @@ def _print_simple_tool_output(tool_name, args, output, execution_info=None, toke
             )
             print(
                 color(
-                    f"  Cost: Current ${current_cost:.4f} | Total ${total_cost_value:.4f} | Session ${COST_TRACKER.session_total_cost:.4f}",
+                    f"  {t('token_cost', current=f'{current_cost:.4f}', total=f'{total_cost_value:.4f}', session=f'{COST_TRACKER.session_total_cost:.4f}')}",
                     fg="cyan",
                 )
             )
@@ -3770,14 +3770,14 @@ def _print_simple_tool_output(tool_name, args, output, execution_info=None, toke
             # Show context usage
             context_pct = interaction_input_tokens / get_model_input_tokens(model) * 100
             indicator = "🟩" if context_pct < 50 else "🟨" if context_pct < 80 else "🟥"
-            print(color(f"  Context: {context_pct:.1f}% {indicator}", fg="cyan"))
+            print(color(f"  {t('token_context', percentage=f'{context_pct:.1f}', indicator=indicator)}", fg="cyan"))
 
     # Truncate output if it's too long
     if output and len(str(output)) > 10000:
         output_str = str(output)
         first_part = output_str[:5000]
         last_part = output_str[-5000:]
-        output = f"{first_part}\n\n... TRUNCATED ...\n\n{last_part}"
+        output = f"{first_part}\n\n{t('truncated')}\n\n{last_part}"
     
     # Print the actual output
     print(output)
@@ -4488,7 +4488,7 @@ def create_claude_thinking_context(agent_name, counter, model):
         # Create the panel for thinking
         panel = Panel(
             Group(header, Text("\n"), thinking_content),
-            title=f"[bold yellow]🧠 {model_display} Thinking Process[/bold yellow]",
+            title=f"[bold yellow]🧠 {t('thinking_process', model=model_display)}[/bold yellow]",
             border_style="yellow",
             box=ROUNDED,
             padding=(1, 2),
@@ -4520,7 +4520,7 @@ def create_claude_thinking_context(agent_name, counter, model):
         return context
 
     except Exception as e:
-        print(f"Error creating {model_display} thinking context: {e}")
+        print(t('error_thinking_context', model=model_display, error=str(e)))
         return None
 
 
@@ -4568,7 +4568,7 @@ def update_claude_thinking_content(context, thinking_delta):
         # Update the panel content
         updated_panel = Panel(
             Group(context["header"], Text("\n"), thinking_display),
-            title=f"[bold yellow]🧠 {model_display} Thinking Process[/bold yellow]",
+            title=f"[bold yellow]🧠 {t('thinking_process', model=model_display)}[/bold yellow]",
             border_style="yellow",
             box=ROUNDED,
             padding=(1, 2),
@@ -4583,7 +4583,7 @@ def update_claude_thinking_content(context, thinking_delta):
                 context["is_started"] = True
             except Exception as e:
                 model_display = context.get("model_display", "AI")
-                print(f"Error starting {model_display} thinking display: {e}")
+                print(t('error_thinking_start', model=model_display, error=str(e)))
                 return False
 
         # Update the live display
@@ -4595,7 +4595,7 @@ def update_claude_thinking_content(context, thinking_delta):
 
     except Exception as e:
         model_display = context.get("model_display", "AI")
-        print(f"Error updating {model_display} thinking content: {e}")
+        print(t('error_thinking_update', model=model_display, error=str(e)))
         return False
 
 
@@ -4626,7 +4626,7 @@ def finish_claude_thinking_display(context):
         # Add final formatting to show completion
         final_header = Text()
         final_header.append("🧠 ", style="bold green")
-        final_header.append(f"{model_display} Reasoning Complete", style="bold green")
+        final_header.append(t('thinking_reasoning_complete', model=model_display), style="bold green")
         final_header.append(f" | {context['agent_name']}", style="bold cyan")
         final_header.append(f" | {context['timestamp']}", style="dim")
 
@@ -4643,12 +4643,12 @@ def finish_claude_thinking_display(context):
                 line_numbers=False,
             )
         else:
-            final_thinking_display = Text("No reasoning captured", style="dim italic")
+            final_thinking_display = Text(t('thinking_no_reasoning'), style="dim italic")
 
         # Create final panel
         final_panel = Panel(
             Group(final_header, Text("\n"), final_thinking_display),
-            title=f"[bold green]🧠 {model_display} Thinking Complete[/bold green]",
+            title=f"[bold green]🧠 {t('thinking_complete', model=model_display)}[/bold green]",
             border_style="green",
             box=ROUNDED,
             padding=(1, 2),
@@ -4672,7 +4672,7 @@ def finish_claude_thinking_display(context):
 
     except Exception as e:
         model_display = context.get("model_display", "AI")
-        print(f"Error finishing {model_display} thinking display: {e}")
+        print(t('error_thinking_finish', model=model_display, error=str(e)))
         return False
 
 

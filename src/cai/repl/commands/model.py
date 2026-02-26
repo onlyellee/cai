@@ -14,6 +14,7 @@ from rich.table import Table  # pylint: disable=import-error
 from rich.panel import Panel  # pylint: disable=import-error
 from cai.util import get_ollama_api_base, get_ollama_auth_headers, COST_TRACKER
 from cai.repl.commands.base import Command, register_command
+from cai.i18n import t
 
 console = Console()
 
@@ -299,15 +300,15 @@ class ModelCommand(Command):
             model_info = os.getenv("CAI_MODEL", "Unknown")
             console.print(
                 Panel(
-                    f"Current model: [bold green]{model_info}[/bold green]",
+                    t('model_changed_to', model=f'[bold green]{model_info}[/bold green]'),
                     border_style="green",
-                    title="Active Model"
+                    title=t('model_active_title')
                 )
             )
 
             # Show available models in a table
             model_table = Table(
-                title="Available Models",
+                title=t('model_available'),
                 show_header=True,
                 header_style="bold yellow")
             model_table.add_column("#", style="bold white", justify="right")
@@ -403,19 +404,10 @@ class ModelCommand(Command):
             console.print(model_table)
 
             # Usage instructions
-            console.print("\n[cyan]Usage:[/cyan]")
-            console.print(
-                "  [bold]/model <model_name>[/bold] - Select by name (e.g. "
-                "[bold]/model claude-3-7-sonnet-20250219[/bold])"
-            )
-            console.print(
-                "  [bold]/model <number>[/bold]     - Select by number (e.g. "
-                "[bold]/model 1[/bold] for first model in list)"
-            )
-            console.print(
-                "  [bold]/model-show[/bold]         - Show all available "
-                "models from LiteLLM repository"
-            )
+            console.print(f"\n[cyan]{t('model_usage_title')}[/cyan]")
+            console.print(f"  [bold]{t('model_usage_by_name')}[/bold]")
+            console.print(f"  [bold]{t('model_usage_by_number')}[/bold]")
+            console.print(f"  [bold]{t('model_usage_show_all')}[/bold]")
             return True
 
         model_arg = args[0]
@@ -437,15 +429,14 @@ class ModelCommand(Command):
 
         # Display model change notification
         change_message = (
-            f"Model changed to: [bold green]{model_name}[/bold green]\n"
-            "[yellow]Note: This will take effect on the next agent "
-            "interaction[/yellow]"
+            f"{t('model_changed_to', model='')}[bold green]{model_name}[/bold green]\n"
+            f"[yellow]{t('model_change_note')}[/yellow]"
         )
         console.print(
             Panel(
                 change_message,
                 border_style="green",
-                title="Model Changed"
+                title=t('model_changed_title')
             ), end=""
         )
         return True
@@ -496,7 +487,7 @@ class ModelShowCommand(Command):
         # Fetch model pricing data from LiteLLM GitHub repository
         try:
             with console.status(
-                "[bold blue]Fetching model data...[/bold blue]"
+                f"[bold blue]{t('model_show_fetching')}[/bold blue]"
             ):
                 response = requests.get(LITELLM_URL, timeout=5)
 
@@ -511,11 +502,11 @@ class ModelShowCommand(Command):
                 model_data = response.json()
 
             # Create a table to display the models
-            title = "All Available Models"
+            title = t('model_show_all_title')
             if show_only_supported:
-                title = "Supported Models (with Function Calling)"
+                title = t('model_show_supported_title')
             if search_term:
-                title += f" - Search: '{search_term}'"
+                title += f" - '{search_term}'"
 
             model_table = Table(
                 title=title,
@@ -717,35 +708,23 @@ class ModelShowCommand(Command):
             displayed_str = str(displayed_models)
             total_str = str(total_models)
             summary_text = (
-                f"\n[cyan]Showing {displayed_str} of {total_str} models"
+                f"\n[cyan]{t('model_show_summary', displayed=displayed_str, total=total_str)}"
             )
             if show_only_supported:
-                summary_text += " with function calling support"
+                summary_text += t('model_show_with_func')
             if search_term:
-                summary_text += f" matching '{search_term}'"
+                summary_text += t('model_show_matching', term=search_term)
             summary_text += "[/cyan]"
             console.print(summary_text)
 
             # Usage instructions
-            console.print("\n[cyan]Usage:[/cyan]")
-            console.print(
-                "  [bold]/model-show[/bold]                - Show all "
-                "available models")
-            console.print(
-                "  [bold]/model-show supported[/bold]      - Show only "
-                "models with function calling")
-            console.print(
-                "  [bold]/model-show <search>[/bold]       - Filter "
-                "models by search term")
-            console.print(
-                "  [bold]/model-show supported <search>[/bold] - Filter "
-                "supported models by search term")
-            console.print(
-                "  [bold]/model <model_name>[/bold]        - Select a "
-                "model to use")
-            console.print(
-                "  [bold]/model <number>[/bold]            - Select a "
-                "model by its number")
+            console.print(f"\n[cyan]{t('model_usage_title')}[/cyan]")
+            console.print(f"  [bold]{t('model_show_usage_all')}[/bold]")
+            console.print(f"  [bold]{t('model_show_usage_supported')}[/bold]")
+            console.print(f"  [bold]{t('model_show_usage_search')}[/bold]")
+            console.print(f"  [bold]{t('model_show_usage_filter')}[/bold]")
+            console.print(f"  [bold]{t('model_show_usage_select')}[/bold]")
+            console.print(f"  [bold]{t('model_show_usage_number')}[/bold]")
 
             # Data source attribution
             data_source = (
@@ -755,7 +734,7 @@ class ModelShowCommand(Command):
             console.print(f"\n[dim]Data source: {data_source}[/dim]")
 
         except Exception as e:  # pylint: disable=broad-except
-            console.print(f"[red]Error fetching model data: {str(e)}[/red]")
+            console.print(f"[red]{t('model_fetch_error', error=str(e))}[/red]")
 
         return True
 

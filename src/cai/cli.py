@@ -833,7 +833,7 @@ def run_cai_cli(
                             tool_msg = {
                                 "role": "tool",
                                 "tool_call_id": call_id,
-                                "content": "Operation interrupted by user (Keyboard Interrupt during shutdown)",
+                                "content": t('operation_interrupted'),
                             }
                             agent.model.add_to_message_history(tool_msg)
                             pending_calls.append(call_info.get("name", "unknown"))
@@ -876,16 +876,16 @@ def run_cai_cli(
                 )
 
                 content = []
-                content.append(f"Session Time: {metrics['session_time']}")
+                content.append(t('session_time', time=metrics['session_time']))
                 content.append(
-                    f"Active Time: {metrics['active_time']} ({metrics['llm_percentage']}%)"
+                    t('session_active_time', time=metrics['active_time'], percentage=metrics['llm_percentage'])
                 )
-                content.append(f"Idle Time: {metrics['idle_time']}")
+                content.append(t('session_idle_time', time=metrics['idle_time']))
                 content.append(
-                    f"Total Session Cost: {metrics['session_cost']}"
+                    t('session_total_cost', cost=metrics['session_cost'])
                 )  # Add cost to display
                 if logging_path:
-                    content.append(f"Log available at: {logging_path}")
+                    content.append(t('session_log_available', path=logging_path))
 
                 def print_session_summary(console, metrics, logging_path=None):
                     """
@@ -898,13 +898,14 @@ def run_cai_cli(
 
                     # Create Rich Text objects for each line
                     text_content = []
+                    session_cost_prefix = t('session_total_cost', cost='').split('$')[0]
                     for i, line in enumerate(content):
-                        if "Total Session Cost" in line:
+                        if session_cost_prefix and session_cost_prefix.strip() in line:
                             # Format cost line with special styling
                             cost_text = Text()
                             parts = line.split(":")
                             cost_text.append(parts[0] + ":", style="bold")
-                            cost_text.append(parts[1], style="bold green")
+                            cost_text.append(":".join(parts[1:]), style="bold green")
                             text_content.append(cost_text)
                         else:
                             text_content.append(Text(line))
@@ -914,7 +915,7 @@ def run_cai_cli(
                         border_style="blue",
                         box=ROUNDED,
                         padding=(0, 1),
-                        title="[bold]Session Summary[/bold]",
+                        title=f"[bold]{t('session_summary_title')}[/bold]",
                         title_align="left",
                     )
                     console.print(time_panel, end="")
@@ -1328,7 +1329,7 @@ def run_cai_cli(
             from rich.text import Text
 
             log_text = Text(
-                f"Log file: {session_logger.filename}",
+                t('log_file', filename=session_logger.filename),
                 style="yellow on black",
             )
             console.print(log_text)

@@ -15,6 +15,7 @@ from rich.table import Table
 from rich.tree import Tree
 
 from cai.repl.commands.base import Command, register_command
+from cai.i18n import t
 from cai.sdk.agents.models.openai_chatcompletions import (
     get_all_agent_histories, 
     get_agent_message_history,
@@ -98,18 +99,18 @@ class MemoryCommand(Command):
             return self.handle_show(args)
             
         # Otherwise show help
-        console.print("[yellow]Unknown subcommand. Available commands:[/yellow]")
-        console.print("[dim]  • /memory list                - List all stored memories[/dim]")
-        console.print("[dim]  • /memory save                - Save current agent history as memory[/dim]")
-        console.print("[dim]  • /memory apply               - Apply a memory to an agent[/dim]")
-        console.print("[dim]  • /memory show                - Show memory content[/dim]")
-        console.print("[dim]  • /memory delete              - Delete a stored memory[/dim]")
-        console.print("[dim]  • /memory merge               - Merge multiple memories into one[/dim]")
-        console.print("[dim]  • /memory status              - Show memory status[/dim]")
-        console.print("[dim]  • /memory compact             - Compact and save agent history[/dim]")
-        console.print("[dim]  • /memory remove              - Remove a specific memory from an agent[/dim]")
-        console.print("[dim]  • /memory clear               - Clear all memories from an agent[/dim]")
-        console.print("[dim]  • /memory list-applied        - Show which memories are applied to an agent[/dim]")
+        console.print(f"[yellow]{t('memory_unknown_cmd')}[/yellow]")
+        console.print(f"[dim]  • {t('memory_cmd_list')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_save')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_apply')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_show')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_delete')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_merge')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_status')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_compact')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_remove')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_clear')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_list_applied')}[/dim]")
         return True
     
     def _ensure_memory_dir(self):
@@ -261,12 +262,12 @@ class MemoryCommand(Command):
     
     def handle_control_panel(self) -> bool:
         """Show a control panel view of memory status."""
-        console.print("[bold cyan]Memory Management Control Panel[/bold cyan]\n")
+        console.print(f"[bold cyan]{t('memory_control_panel')}[/bold cyan]\n")
         
         # Show stored memories
         memories = list(MEMORY_DIR.glob("*.md"))
         if memories:
-            console.print("[bold cyan]:floppy_disk: Stored Memories[/bold cyan]")
+            console.print(f"[bold cyan]:floppy_disk: {t('memory_stored')}[/bold cyan]")
             
             # Load index to get ID mappings
             index = self._load_index()
@@ -305,11 +306,11 @@ class MemoryCommand(Command):
             
             console.print(table)
         else:
-            console.print("[yellow]No memories stored yet[/yellow]")
-        
+            console.print(f"[yellow]{t('memory_no_memories')}[/yellow]")
+
         # Show applied memories
         if APPLIED_MEMORY_IDS:
-            console.print("\n[bold cyan]:brain: Applied Memories[/bold cyan]")
+            console.print(f"\n[bold cyan]:brain: {t('memory_applied')}[/bold cyan]")
             for agent_name, memory_ids in APPLIED_MEMORY_IDS.items():
                 if isinstance(memory_ids, list):
                     ids_str = ", ".join(memory_ids) if memory_ids else "None"
@@ -319,20 +320,20 @@ class MemoryCommand(Command):
                     console.print(f"  • {agent_name}: {memory_ids}")
         
         # Show usage hints
-        console.print("\n[dim]Commands:[/dim]")
-        console.print("[dim]  • /memory list                - List all stored memories[/dim]")
-        console.print("[dim]  • /memory save <name>         - Save current agent as memory[/dim]")
-        console.print("[dim]  • /memory apply <ID/name>     - Apply memory to P1 (default)[/dim]")
-        console.print("[dim]  • /memory apply <ID> all      - Apply to all active agents[/dim]")
-        console.print("[dim]  • /memory show <ID/name>      - View memory content[/dim]")
-        console.print("[dim]  • /memory delete <ID/name>    - Delete a memory[/dim]")
-        console.print("[dim]  • /memory merge <ID1> <ID2>   - Merge multiple memories[/dim]")
-        console.print("[dim]  • /memory compact <agent>     - Compact agent history to memory[/dim]")
-        console.print("[dim]  • /memory remove <ID> <agent> - Remove a specific memory from agent[/dim]")
-        console.print("[dim]  • /memory clear <agent>       - Clear all memories from agent[/dim]")
-        console.print("[dim]  • /memory list-applied        - Show applied memories by agent[/dim]")
-        console.print("[dim]\nNote: You can use memory IDs (e.g., M001) instead of full names[/dim]")
-        console.print("[dim]      Agents now support multiple memories![/dim]")
+        console.print(f"\n[dim]{t('memory_commands_label')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_list')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_save')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_apply')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_apply_all')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_show')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_delete')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_merge')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_compact')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_remove')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_clear')}[/dim]")
+        console.print(f"[dim]  • {t('memory_cmd_list_applied')}[/dim]")
+        console.print(f"[dim]\n{t('memory_note_ids')}[/dim]")
+        console.print(f"[dim]      {t('memory_note_multi')}[/dim]")
         
         return True
     
@@ -341,8 +342,8 @@ class MemoryCommand(Command):
         memories = list(MEMORY_DIR.glob("*.md"))
         
         if not memories:
-            console.print("[yellow]No memories stored yet[/yellow]")
-            console.print("[dim]Use '/memory save' to create a memory from current history[/dim]")
+            console.print(f"[yellow]{t('memory_no_memories')}[/yellow]")
+            console.print(f"[dim]{t('memory_use_save')}[/dim]")
             return True
         
         # Load index to get ID mappings
@@ -351,7 +352,7 @@ class MemoryCommand(Command):
         file_to_id = {v: k for k, v in id_to_file.items()}
         
         # Create a table showing all memories
-        table = Table(title="Stored Memories", show_header=True, header_style="bold yellow")
+        table = Table(title=t('memory_stored'), show_header=True, header_style="bold yellow")
         table.add_column("ID", style="bright_cyan", width=6)
         table.add_column("Name", style="cyan")
         table.add_column("Agent", style="green")
@@ -386,13 +387,13 @@ class MemoryCommand(Command):
             )
         
         console.print(table)
-        console.print("\n[dim]Commands:[/dim]")
-        console.print("[dim]  • /memory show <ID/name>    - View memory content[/dim]")
-        console.print("[dim]  • /memory apply <ID/name>   - Apply memory to P1 (default)[/dim]")
-        console.print("[dim]  • /memory apply <ID/name> all - Apply to all active agents[/dim]")
-        console.print("[dim]  • /memory delete <ID/name>  - Delete a memory[/dim]")
-        console.print("[dim]  • /memory merge <ID1> <ID2> - Merge multiple memories[/dim]")
-        console.print("[dim]\nNote: You can use either the memory ID (e.g., M001) or the full name[/dim]")
+        console.print(f"\n[dim]{t('memory_commands_label')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_show')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_apply')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_apply_all')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_delete')}[/dim]")
+        console.print(f"[dim]  • {t('memory_panel_cmd_merge')}[/dim]")
+        console.print(f"[dim]\n{t('memory_note_id_or_name')}[/dim]")
         
         return True
     
@@ -402,8 +403,8 @@ class MemoryCommand(Command):
             # Use current active agent
             agent_name = self._get_current_agent_name()
             if not agent_name:
-                console.print("[red]Error: No active agent found[/red]")
-                console.print("Usage: /memory save <memory_name> [agent_name]")
+                console.print(f"[red]{t('memory_error_no_active')}[/red]")
+                console.print(t('memory_usage_save'))
                 return False
             memory_name = f"{agent_name.replace(' ', '_')}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         else:
@@ -414,16 +415,16 @@ class MemoryCommand(Command):
             else:
                 agent_name = self._get_current_agent_name()
                 if not agent_name:
-                    console.print("[red]Error: No active agent found[/red]")
+                    console.print(f"[red]{t('memory_error_no_active')}[/red]")
                     return False
-        
+
         history = get_agent_message_history(agent_name)
-        
+
         if not history:
-            console.print(f"[yellow]No history found for agent '{agent_name}'[/yellow]")
+            console.print(f"[yellow]{t('memory_no_history', agent=agent_name)}[/yellow]")
             return True
-        
-        console.print(f"\n[cyan]Saving memory for {agent_name}...[/cyan]")
+
+        console.print(f"\n[cyan]{t('memory_saving', agent=agent_name)}[/cyan]")
         
         # Generate summary
         summary = asyncio.run(self._ai_summarize_history(agent_name))
@@ -457,17 +458,17 @@ Model: {get_compact_model() or os.environ.get("CAI_MODEL", "gpt-4")}
             # Register the memory in the index
             self._register_memory(memory_id, memory_name)
             
-            console.print(f"[green]✓ Saved memory: {memory_name} (ID: {memory_id})[/green]")
-            
+            console.print(f"[green]✓ {t('memory_saved', name=memory_name, id=memory_id)}[/green]")
+
             # Automatically apply the memory to the agent's system prompt
             if agent_name not in COMPACTED_SUMMARIES:
                 COMPACTED_SUMMARIES[agent_name] = []
                 APPLIED_MEMORY_IDS[agent_name] = []
-            
+
             # Clear existing memories and add new one (maintain single memory behavior for save)
             COMPACTED_SUMMARIES[agent_name] = [summary]
             APPLIED_MEMORY_IDS[agent_name] = [memory_id]
-            console.print(f"[green]✓ Memory {memory_id} automatically applied to {agent_name}'s system prompt[/green]")
+            console.print(f"[green]✓ {t('memory_auto_applied', id=memory_id, agent=agent_name)}[/green]")
             os.environ['CAI_MEMORY'] = 'true' 
             
             # Reload the agent with the new memory
@@ -480,17 +481,17 @@ Model: {get_compact_model() or os.environ.get("CAI_MODEL", "gpt-4")}
                 border_style="green"
             ))
         else:
-            console.print(f"[red]✗ Failed to save memory[/red]")
+            console.print(f"[red]✗ {t('memory_save_failed')}[/red]")
             
         return True
     
     def handle_apply(self, args: Optional[List[str]] = None) -> bool:
         """Apply a memory to an agent by injecting it into the system prompt."""
         if not args:
-            console.print("[red]Error: Memory ID or name required[/red]")
-            console.print("Usage: /memory apply <memory_id_or_name> [agent_name|all]")
-            console.print("       /memory apply <memory_id_or_name>        - Applies to P1 by default")
-            console.print("       /memory apply <memory_id_or_name> all    - Applies to all active agents")
+            console.print(f"[red]{t('memory_error_id_required')}[/red]")
+            console.print(t('memory_usage_apply'))
+            console.print(f"       {t('memory_apply_default_hint')}")
+            console.print(f"       {t('memory_apply_all_hint')}")
             return False
         
         memory_identifier = args[0]
@@ -502,9 +503,9 @@ Model: {get_compact_model() or os.environ.get("CAI_MODEL", "gpt-4")}
             return False
         
         if not memory_path.exists():
-            console.print(f"[red]Error: Memory '{memory_identifier}' not found[/red]")
+            console.print(f"[red]{t('memory_not_found', id=memory_identifier)}[/red]")
             return False
-        
+
         # Determine target agent(s)
         target_agents = []
         
@@ -518,39 +519,39 @@ Model: {get_compact_model() or os.environ.get("CAI_MODEL", "gpt-4")}
                 active_agents = AGENT_MANAGER.get_active_agents()
                 
                 if not active_agents:
-                    console.print("[yellow]No active agents found[/yellow]")
+                    console.print(f"[yellow]{t('memory_no_active_agents')}[/yellow]")
                     return False
-                
+
                 # Apply to all active agents
                 for agent_name, agent_id in active_agents.items():
                     target_agents.append(agent_name)
-                    
-                console.print(f"[cyan]Applying memory to {len(target_agents)} agents...[/cyan]")
+
+                console.print(f"[cyan]{t('memory_applying_to', count=len(target_agents))}[/cyan]")
             else:
                 # Specific agent requested
                 agent_name = self._resolve_agent_name(agent_identifier)
                 if agent_name:
                     target_agents.append(agent_name)
                 else:
-                    console.print(f"[red]Error: Could not resolve agent '{agent_identifier}'[/red]")
+                    console.print(f"[red]{t('memory_error_resolve', id=agent_identifier)}[/red]")
                     return False
         else:
             # No agent specified - default to P1
             from cai.sdk.agents.simple_agent_manager import AGENT_MANAGER
-            
+
             # Try to get the P1 agent
             p1_agent_name = AGENT_MANAGER.get_agent_by_id("P1")
             if p1_agent_name:
                 target_agents.append(p1_agent_name)
-                console.print(f"[dim]No agent specified, applying to P1 ({p1_agent_name}) by default[/dim]")
+                console.print(f"[dim]{t('memory_default_p1', name=p1_agent_name)}[/dim]")
             else:
                 # Fallback to current active agent
                 agent_name = self._get_current_agent_name()
                 if agent_name:
                     target_agents.append(agent_name)
                 else:
-                    console.print("[red]Error: No P1 agent found[/red]")
-                    console.print("[dim]Specify an agent name or use 'all' to apply to all agents[/dim]")
+                    console.print(f"[red]{t('memory_error_no_p1')}[/red]")
+                    console.print(f"[dim]{t('memory_specify_agent')}[/dim]")
                     return False
         
         # Read memory content - just use the entire content without filtering
@@ -560,7 +561,7 @@ Model: {get_compact_model() or os.environ.get("CAI_MODEL", "gpt-4")}
         summary = memory_content.strip()
         
         if not summary:
-            console.print(f"[red]Error: Memory file is empty[/red]")
+            console.print(f"[red]{t('memory_file_empty')}[/red]")
             return False
         
         # Get memory ID from the path or identifier
@@ -586,29 +587,29 @@ Model: {get_compact_model() or os.environ.get("CAI_MODEL", "gpt-4")}
                 
                 # Check if memory already applied
                 if memory_id and memory_id in APPLIED_MEMORY_IDS[agent_name]:
-                    console.print(f"[yellow]Memory {memory_id} already applied to {agent_name}[/yellow]")
+                    console.print(f"[yellow]{t('memory_already_applied', id=memory_id, agent=agent_name)}[/yellow]")
                     continue
-                
+
                 # Append memory (supports multiple memories)
                 COMPACTED_SUMMARIES[agent_name].append(summary)
-                
+
                 # Store the memory ID for this agent
                 if memory_id:
                     APPLIED_MEMORY_IDS[agent_name].append(memory_id)
-                    console.print(f"[green]✓ Applied memory {memory_id} to {agent_name}[/green]")
+                    console.print(f"[green]✓ {t('memory_applied_to', id=memory_id, agent=agent_name)}[/green]")
                 else:
-                    console.print(f"[green]✓ Applied memory '{memory_identifier}' to {agent_name}[/green]")
+                    console.print(f"[green]✓ {t('memory_applied_named', name=memory_identifier, agent=agent_name)}[/green]")
                 
                 # Reload the agent to apply the memory to system prompt
                 self._reload_agent_with_memory(agent_name)
                 success_count += 1
                 
             except Exception as e:
-                console.print(f"[red]Error applying memory to {agent_name}: {e}[/red]")
-        
+                console.print(f"[red]{t('memory_error_applying', agent=agent_name, error=str(e))}[/red]")
+
         if success_count > 0:
-            os.environ['CAI_MEMORY'] = 'true' 
-            console.print("[dim]The memory will be included in the agents' system prompts[/dim]")
+            os.environ['CAI_MEMORY'] = 'true'
+            console.print(f"[dim]{t('memory_system_prompt_hint')}[/dim]")
             
             # Show summary with ID if available (only once)
             title_text = f"[green]Applied Memory{' (' + memory_id + ')' if memory_id else ''}[/green]"
@@ -619,29 +620,29 @@ Model: {get_compact_model() or os.environ.get("CAI_MODEL", "gpt-4")}
             ))
             
             if len(target_agents) > 1:
-                console.print(f"\n[bold green]Successfully applied memory to {success_count}/{len(target_agents)} agents[/bold green]")
+                console.print(f"\n[bold green]{t('memory_apply_success', success=success_count, total=len(target_agents))}[/bold green]")
         else:
-            console.print(f"[red]Failed to apply memory to any agents[/red]")
+            console.print(f"[red]{t('memory_apply_all_failed')}[/red]")
         
         return True
     
     def handle_show(self, args: Optional[List[str]] = None) -> bool:
         """Show memory content."""
         if not args:
-            console.print("[red]Error: Memory ID or name required[/red]")
-            console.print("Usage: /memory show <memory_id_or_name>")
+            console.print(f"[red]{t('memory_error_id_required')}[/red]")
+            console.print(t('memory_usage_show'))
             return False
-        
+
         memory_identifier = args[0]
-        
+
         try:
             memory_path = self._get_memory_path(memory_identifier)
         except ValueError as e:
             console.print(f"[red]Error: {e}[/red]")
             return False
-        
+
         if not memory_path.exists():
-            console.print(f"[red]Error: Memory '{memory_identifier}' not found[/red]")
+            console.print(f"[red]{t('memory_not_found', id=memory_identifier)}[/red]")
             return False
         
         # Read and display memory content

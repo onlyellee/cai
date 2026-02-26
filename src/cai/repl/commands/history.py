@@ -11,6 +11,7 @@ from rich.panel import Panel  # pylint: disable=import-error
 from rich.table import Table  # pylint: disable=import-error
 from rich.tree import Tree  # pylint: disable=import-error
 
+from cai.i18n import t
 from cai.repl.commands.base import Command, register_command
 
 console = Console()
@@ -72,7 +73,7 @@ class HistoryCommand(Command):
             from cai.agents import get_available_agents
             import os
         except ImportError:
-            console.print("[red]Error: Could not access conversation history[/red]")
+            console.print(f"[red]{t('history_error_access')}[/red]")
             return False
 
         # Get all histories from AGENT_MANAGER
@@ -230,12 +231,12 @@ class HistoryCommand(Command):
                         AGENT_MANAGER._agent_registry[agent_name] = "P1"
         
         if not agents_to_show:
-            console.print("[yellow]No agents configured[/yellow]")
-            console.print("[dim]Start a conversation or configure agents to see history[/dim]")
+            console.print(f"[yellow]{t('history_no_agents')}[/yellow]")
+            console.print(f"[dim]{t('history_start_hint')}[/dim]")
             return True
         
         # Create a tree view showing all agents
-        tree = Tree(":robot: [bold cyan]Agent History Control Panel[/bold cyan]")
+        tree = Tree(f":robot: [bold cyan]{t('history_control_panel')}[/bold cyan]")
         
         total_messages = 0
         
@@ -264,7 +265,7 @@ class HistoryCommand(Command):
             # Determine status
             status_parts = []
             if msg_count == 0:
-                status_parts.append("[yellow](no messages)[/yellow]")
+                status_parts.append(f"[yellow]{t('history_no_messages')}[/yellow]")
             
             # Check if this agent is currently active
             is_current = False
@@ -285,9 +286,9 @@ class HistoryCommand(Command):
                     is_current = True
             
             if is_current:
-                status_parts.append("[green](active)[/green]")
+                status_parts.append(f"[green]{t('history_active')}[/green]")
             elif agent_info.get('is_registered'):
-                status_parts.append("[blue](registered)[/blue]")
+                status_parts.append(f"[blue]{t('history_registered')}[/blue]")
             
             # Check for model override in config
             if 'config' in agent_info and agent_info['config'].model:
@@ -341,17 +342,17 @@ class HistoryCommand(Command):
                     }.get(role, "white")
                     agent_branch.add(f"[{role_style}]{role}[/{role_style}]: {count}")
             else:
-                agent_branch.add(f"[dim]No messages yet[/dim]")
+                agent_branch.add(f"[dim]{t('history_no_messages_yet')}[/dim]")
         
         console.print(tree)
-        console.print(f"\n[bold]Total messages across all agents: {total_messages}[/bold]")
+        console.print(f"\n[bold]{t('history_total_messages', count=total_messages)}[/bold]")
         
         # Show usage hints
-        console.print("\n[dim]Commands:[/dim]")
-        console.print("[dim]  • /history <ID>              - View specific agent by ID (e.g., P1)[/dim]")
-        console.print("[dim]  • /history agent <name>      - View by agent name[/dim]")
-        console.print("[dim]  • /history search <term>     - Search across all agents[/dim]")
-        console.print("[dim]  • /history index <ID> <num>  - View specific message by index[/dim]")
+        console.print(f"\n[dim]{t('history_commands_label')}[/dim]")
+        console.print(f"[dim]  • {t('history_cmd_id')}[/dim]")
+        console.print(f"[dim]  • {t('history_cmd_agent')}[/dim]")
+        console.print(f"[dim]  • {t('history_cmd_search')}[/dim]")
+        console.print(f"[dim]  • {t('history_cmd_index')}[/dim]")
 
         return True
 
@@ -362,7 +363,7 @@ class HistoryCommand(Command):
         all_histories = AGENT_MANAGER.get_all_histories()
 
         if not all_histories:
-            console.print("[yellow]No agents have conversation history[/yellow]")
+            console.print(f"[yellow]{t('history_no_history_all')}[/yellow]")
             return True
 
         # Combine all messages with agent tags
@@ -374,7 +375,7 @@ class HistoryCommand(Command):
                 all_messages.append(msg_copy)
 
         # Display in a table
-        table = Table(title="All Agent Conversations", show_header=True, header_style="bold yellow")
+        table = Table(title=t('history_all_title'), show_header=True, header_style="bold yellow")
         table.add_column("#", style="dim")
         table.add_column("Agent", style="magenta")
         table.add_column("Role", style="cyan")
@@ -412,9 +413,9 @@ class HistoryCommand(Command):
     def handle_agent(self, args: Optional[List[str]] = None) -> bool:
         """Show history for a specific agent."""
         if not args:
-            console.print("[red]Error: Agent name or ID required[/red]")
-            console.print("Usage: /history agent <agent_name>")
-            console.print("       /history <ID>")
+            console.print(f"[red]{t('history_error_agent_required')}[/red]")
+            console.print(t('history_usage_agent'))
+            console.print(t('history_usage_id'))
             return False
 
         # Join all args to handle agent names with spaces
@@ -499,10 +500,10 @@ class HistoryCommand(Command):
                                         break
                                 
                                 if not history:
-                                    console.print(f"[yellow]No agent found with ID '{agent_id}'[/yellow]")
+                                    console.print(f"[yellow]{t('history_no_agent_id', id=agent_id)}[/yellow]")
                                     return True
                         else:
-                            console.print(f"[yellow]No agent found with ID '{agent_id}'[/yellow]")
+                            console.print(f"[yellow]{t('history_no_agent_id', id=agent_id)}[/yellow]")
                             return True
         else:
             # Try to find by name in all histories
@@ -530,7 +531,7 @@ class HistoryCommand(Command):
                         break
         
         if not agent_name:
-            console.print(f"[yellow]No agent found matching '{agent_identifier}'[/yellow]")
+            console.print(f"[yellow]{t('history_no_agent_match', id=agent_identifier)}[/yellow]")
             return True
 
         # Always try to get history from AGENT_MANAGER to ensure consistency
@@ -546,7 +547,7 @@ class HistoryCommand(Command):
                 agent_id = AGENT_MANAGER.get_id_by_name(agent_name) or "Unknown"
             
             console.print(Panel(
-                f"[yellow]No conversation history yet[/yellow]",
+                f"[yellow]{t('history_no_conversation')}[/yellow]",
                 title=f"[cyan]{agent_name} [{agent_id}][/cyan]",
                 border_style="blue"
             ))
@@ -558,7 +559,7 @@ class HistoryCommand(Command):
 
         # Create a table for the history
         table = Table(
-            title=f"Conversation History: {agent_name} [{agent_id}]",
+            title=t('history_conversation_title', agent=agent_name, id=agent_id),
             show_header=True,
             header_style="bold yellow",
         )
@@ -604,7 +605,7 @@ class HistoryCommand(Command):
                 table.add_row(str(idx), f"[{role_style}]{role}[/{role_style}]", formatted_content)
             except Exception as e:
                 # Log error but continue with next message
-                console.print(f"[red]Error displaying message {idx}: {e}[/red]")
+                console.print(f"[red]{t('history_error_display', idx=idx, error=e)}[/red]")
                 continue
 
         console.print(table)
@@ -613,8 +614,8 @@ class HistoryCommand(Command):
     def handle_search(self, args: Optional[List[str]] = None) -> bool:
         """Search for messages containing specific terms across all agents."""
         if not args:
-            console.print("[red]Error: Search term required[/red]")
-            console.print("Usage: /history search <search_term>")
+            console.print(f"[red]{t('history_error_search_required')}[/red]")
+            console.print(t('history_usage_search'))
             return False
 
         search_term = " ".join(args).lower()
@@ -624,7 +625,7 @@ class HistoryCommand(Command):
         all_histories = AGENT_MANAGER.get_all_histories()
 
         if not all_histories:
-            console.print("[yellow]No agents have conversation history[/yellow]")
+            console.print(f"[yellow]{t('history_no_history_all')}[/yellow]")
             return True
 
         # Search across all agents
@@ -651,12 +652,12 @@ class HistoryCommand(Command):
                             break
 
         if not found_messages:
-            console.print(f"[yellow]No messages found containing '{search_term}'[/yellow]")
+            console.print(f"[yellow]{t('history_no_results', term=search_term)}[/yellow]")
             return True
 
         # Display search results
         console.print(
-            f"\n[bold green]Found {len(found_messages)} messages containing '{search_term}':[/bold green]\n"
+            f"\n[bold green]{t('history_found_count', count=len(found_messages), term=search_term)}[/bold green]\n"
         )
 
         for agent_name, msg_idx, msg in found_messages:
@@ -729,7 +730,7 @@ class HistoryCommand(Command):
             return content
         else:
             # No content or tool calls (empty message)
-            return "[dim italic]Empty message[/dim italic]"
+            return f"[dim italic]{t('history_empty_message')}[/dim italic]"
 
     def handle_index(self, args: Optional[List[str]] = None) -> bool:
         """Show message by index and optionally filter by role.
@@ -737,8 +738,8 @@ class HistoryCommand(Command):
         Usage: /history index <agent_name> <index> [role]
         """
         if not args or len(args) < 2:
-            console.print("[red]Error: Agent name and index required[/red]")
-            console.print("Usage: /history index <agent_name> <index> [role]")
+            console.print(f"[red]{t('history_error_index_required')}[/red]")
+            console.print(t('history_usage_index'))
             console.print("Example: /history index red_teamer 5")
             console.print('Example: /history index "Bug Bounter #1" 5 user')
             return False
@@ -751,7 +752,7 @@ class HistoryCommand(Command):
                 break
 
         if index_pos < 1:  # Need at least one arg before the index for agent name
-            console.print("[red]Error: Could not parse agent name and index[/red]")
+            console.print(f"[red]{t('history_error_parse')}[/red]")
             return False
 
         # Agent name is everything before the index
@@ -760,10 +761,10 @@ class HistoryCommand(Command):
         try:
             index = int(args[index_pos]) - 1  # Convert to 0-based index
             if index < 0:
-                console.print("[red]Error: Index must be positive[/red]")
+                console.print(f"[red]{t('history_error_positive_index')}[/red]")
                 return False
         except ValueError:
-            console.print("[red]Error: Invalid index number[/red]")
+            console.print(f"[red]{t('history_error_invalid_index')}[/red]")
             return False
 
         role_filter = args[index_pos + 1].lower() if len(args) > index_pos + 1 else None
@@ -777,13 +778,13 @@ class HistoryCommand(Command):
             if real_agent_name:
                 agent_name = real_agent_name
             else:
-                console.print(f"[yellow]No agent found with ID '{agent_id}'[/yellow]")
+                console.print(f"[yellow]{t('history_no_agent_id', id=agent_id)}[/yellow]")
                 return True
 
         history = AGENT_MANAGER.get_message_history(agent_name)
 
         if not history:
-            console.print(f"[yellow]No conversation history for agent '{agent_name}'[/yellow]")
+            console.print(f"[yellow]{t('history_no_agent_history', agent=agent_name)}[/yellow]")
             return True
 
         # Filter by role if specified
@@ -794,15 +795,13 @@ class HistoryCommand(Command):
                 if msg.get("role", "").lower() == role_filter
             ]
             if not filtered_messages:
-                console.print(f"[yellow]No messages with role '{role_filter}' found[/yellow]")
+                console.print(f"[yellow]{t('history_no_role_messages', role=role_filter)}[/yellow]")
                 return True
 
             # Check if index is valid for filtered messages
             if index >= len(filtered_messages):
                 console.print(
-                    f"[red]Error: Index {index + 1} out of range. "
-                    f"Agent '{agent_name}' has {len(filtered_messages)} "
-                    f"messages with role '{role_filter}'[/red]"
+                    f"[red]{t('history_error_role_out_of_range', index=index + 1, agent=agent_name, count=len(filtered_messages), role=role_filter)}[/red]"
                 )
                 return False
 
@@ -812,8 +811,7 @@ class HistoryCommand(Command):
             # No role filter
             if index >= len(history):
                 console.print(
-                    f"[red]Error: Index {index + 1} out of range. "
-                    f"Agent '{agent_name}' has {len(history)} messages[/red]"
+                    f"[red]{t('history_error_out_of_range', index=index + 1, agent=agent_name, count=len(history))}[/red]"
                 )
                 return False
 

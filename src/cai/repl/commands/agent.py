@@ -18,6 +18,7 @@ from cai.agents import get_agent_module, get_available_agents
 from cai.repl.commands.base import Command, register_command
 from cai.sdk.agents import Agent
 from cai.util import visualize_agent_graph
+from cai.i18n import t
 
 console = Console()
 
@@ -148,7 +149,7 @@ class AgentCommand(Command):
             True if the command was handled successfully
         """
         # Create agents table
-        agents_table = Table(title="Available Agents")
+        agents_table = Table(title=t('agent_table_available'))
         agents_table.add_column("#", style="dim")
         agents_table.add_column("Name", style="cyan")
         agents_table.add_column("Key", style="magenta")
@@ -206,7 +207,7 @@ class AgentCommand(Command):
                     parallel_patterns.append((k, v))
         
         if parallel_patterns:
-            patterns_table = Table(title="Available Parallel Patterns")
+            patterns_table = Table(title=t('agent_table_parallel'))
             patterns_table.add_column("#", style="dim")
             patterns_table.add_column("Name", style="cyan")
             patterns_table.add_column("Type", style="yellow")
@@ -254,7 +255,7 @@ class AgentCommand(Command):
             
             console.print("\n")
             console.print(patterns_table)
-            console.print("\n[dim]Use '/agent <#>' or '/agent <pattern_name>' to load a pattern[/dim]")
+            console.print(f"\n[dim]{t('agent_load_pattern_hint')}[/dim]")
         
         return True
 
@@ -268,8 +269,8 @@ class AgentCommand(Command):
             True if the command was handled successfully, False otherwise
         """
         if not args:
-            console.print("[red]Error: No agent specified[/red]")
-            console.print("Usage: /agent select <agent_key|number|pattern>")
+            console.print(f"[red]{t('agent_error_no_agent')}[/red]")
+            console.print(t('agent_usage_select'))
             return False
 
         agent_id = args[0]
@@ -313,8 +314,8 @@ class AgentCommand(Command):
                 agent_name = getattr(selected_agent, "name", selected_agent_key)
                 agent = selected_agent
             else:
-                console.print(f"[red]Error: Invalid agent number: {agent_id}[/red]")
-                console.print(f"[dim]Valid range: 1-{total_regular} for agents, {total_regular + 1}-{total_regular + len(parallel_patterns)} for patterns[/dim]")
+                console.print(f"[red]{t('agent_error_invalid_number', id=agent_id)}[/red]")
+                console.print(f"[dim]{t('agent_error_valid_range', regular=total_regular, pattern_start=total_regular + 1, pattern_end=total_regular + len(parallel_patterns))}[/dim]")
                 return False
         else:
             # Treat as agent key
@@ -326,9 +327,9 @@ class AgentCommand(Command):
                     agent_name = getattr(agent_obj, "name", key)
                     break
             else:
-                console.print(f"[red]Error: Unknown agent key: {agent_id}[/red]")
+                console.print(f"[red]{t('agent_error_unknown_key', id=agent_id)}[/red]")
                 return False
-        
+
         # Check if this is a pattern pseudo-agent
         if hasattr(agent, "_pattern"):
             pattern = agent._pattern
@@ -446,8 +447,8 @@ class AgentCommand(Command):
                             # Set pattern description in environment for cli.py to check
                             os.environ["CAI_PATTERN_DESCRIPTION"] = pattern.description or ""
                             
-                            console.print(f"[green]Loaded parallel pattern: {pattern.description}[/green]")
-                            console.print(f"[cyan]{len(PARALLEL_CONFIGS)} agents configured in parallel mode[/cyan]")
+                            console.print(f"[green]{t('agent_loaded_parallel', desc=pattern.description)}[/green]")
+                            console.print(f"[cyan]{t('agent_parallel_count', count=len(PARALLEL_CONFIGS))}[/cyan]")
                             
                             # Show configured agents
                             for idx, config in enumerate(PARALLEL_CONFIGS, 1):
@@ -457,7 +458,7 @@ class AgentCommand(Command):
                             return True
                         except (TypeError, AttributeError) as e:
                             # Pattern configs is not iterable or has issues
-                            console.print(f"[red]Error loading parallel pattern: {str(e)}[/red]")
+                            console.print(f"[red]{t('agent_error_parallel_load', error=str(e))}[/red]")
                             import traceback
                             console.print(f"[dim]{traceback.format_exc()}[/dim]")
                             return False
@@ -486,12 +487,12 @@ class AgentCommand(Command):
                         
                         if agent_key:
                             os.environ["CAI_AGENT_TYPE"] = agent_key
-                            console.print(f"[green]Loaded swarm pattern: {pattern.name}[/green]")
-                            console.print(f"[cyan]Entry agent: {getattr(entry_agent, 'name', agent_key)}[/cyan]")
+                            console.print(f"[green]{t('agent_loaded_swarm', name=pattern.name)}[/green]")
+                            console.print(f"[cyan]{t('agent_swarm_entry', name=getattr(entry_agent, 'name', agent_key))}[/cyan]")
                             
                             # Show agents in the swarm
                             if hasattr(pattern, "agents") and pattern.agents:
-                                console.print("\n[bold]Agents in swarm:[/bold]")
+                                console.print(f"\n[bold]{t('agent_swarm_agents')}[/bold]")
                                 for ag in pattern.agents:
                                     ag_name = getattr(ag, "name", str(ag))
                                     console.print(f"  • {ag_name}")
@@ -501,15 +502,15 @@ class AgentCommand(Command):
                             agent_name = getattr(entry_agent, "name", agent_key)
                             agent = entry_agent
                         else:
-                            console.print(f"[red]Error: Could not find entry agent for swarm pattern[/red]")
+                            console.print(f"[red]{t('agent_error_no_entry')}[/red]")
                             return False
                     else:
-                        console.print(f"[red]Error: Swarm pattern has no entry agent defined[/red]")
+                        console.print(f"[red]{t('agent_error_no_entry_defined')}[/red]")
                         return False
                         
                 else:
                     # Other pattern types not yet supported for direct loading
-                    console.print(f"[yellow]Pattern type '{pattern_type_str}' is not yet supported for direct loading[/yellow]")
+                    console.print(f"[yellow]{t('agent_pattern_unsupported', type=pattern_type_str)}[/yellow]")
                     console.print(f"[dim]Pattern: {pattern.name} - {pattern.description}[/dim]")
                     return False
         else:
@@ -534,11 +535,11 @@ class AgentCommand(Command):
                     agent = selected_agent
                     agent_name = getattr(selected_agent, "name", selected_agent_key)
                 else:
-                    console.print(f"[red]Error: Could not find agent for key: {selected_agent_key}[/red]")
+                    console.print(f"[red]{t('agent_error_key_not_found', key=selected_agent_key)}[/red]")
                     return False
         else:
             # This shouldn't happen, but let's be safe
-            console.print(f"[red]Error: Could not determine agent key[/red]")
+            console.print(f"[red]{t('agent_error_no_key')}[/red]")
             return False
         
         # Check if this was a parallel pattern - if so, we're done
@@ -668,13 +669,13 @@ class AgentCommand(Command):
         elif 'selected_agent_key' in locals() and selected_agent_key in agents_to_display:
             final_agent_name = getattr(agents_to_display[selected_agent_key], 'name', selected_agent_key)
         
-        console.print(f"[green]Switched to agent: {final_agent_name}[/green]", end="")
-        console.print(" [yellow](Parallel mode disabled)[/yellow]" if len(PARALLEL_CONFIGS) == 0 else "")
+        console.print(f"[green]{t('agent_switched', name=final_agent_name)}[/green]", end="")
+        console.print(f" [yellow]{t('agent_parallel_disabled')}[/yellow]" if len(PARALLEL_CONFIGS) == 0 else "")
         
         visualize_agent_graph(agent)
 
         # Display the system prompt
-        console.print("\n[bold yellow]System Prompt:[/bold yellow]")
+        console.print(f"\n[bold yellow]{t('agent_system_prompt')}[/bold yellow]")
         instructions = agent.instructions
         if callable(instructions):
             instructions = instructions()
@@ -683,7 +684,7 @@ class AgentCommand(Command):
         if len(instructions) > 500:
             console.print(f"[dim]{instructions[:500]}...[/dim]")
             console.print(
-                "[dim italic](Truncated for display - full prompt used by agent)[/dim italic]"
+                f"[dim italic]{t('agent_prompt_truncated')}[/dim italic]"
             )
         else:
             console.print(f"[dim]{instructions}[/dim]")
@@ -700,8 +701,8 @@ class AgentCommand(Command):
             True if the command was handled successfully, False otherwise
         """
         if not args:
-            console.print("[red]Error: No agent specified[/red]")
-            console.print("Usage: /agent info <agent_key|number>")
+            console.print(f"[red]{t('agent_error_no_agent')}[/red]")
+            console.print(t('agent_usage_info'))
             return False
 
         agent_id = args[0]
@@ -713,7 +714,7 @@ class AgentCommand(Command):
         if agent_id.isdigit():
             idx = int(agent_id)
             if not (1 <= idx <= len(agents_to_display)):
-                console.print(f"[red]Error: Invalid agent number: {agent_id}[/red]")
+                console.print(f"[red]{t('agent_error_invalid_number', id=agent_id)}[/red]")
                 return False
             agent_key = list(agents_to_display.keys())[idx - 1]
         else:
@@ -723,7 +724,7 @@ class AgentCommand(Command):
                     agent_key = key
                     break
             if agent_key is None:
-                console.print(f"[red]Error: Unknown agent key: {agent_id}[/red]")
+                console.print(f"[red]{t('agent_error_unknown_key', id=agent_id)}[/red]")
                 return False
 
         agent = agents_to_display[agent_key]
@@ -831,11 +832,11 @@ class AgentCommand(Command):
 
             # Build parallel content
             parallel_content = []
-            parallel_content.append(f"[bold cyan]Active Pattern:[/bold cyan] {pattern_name}")
-            parallel_content.append(f"[bold]Mode:[/bold] Parallel Execution")
-            parallel_content.append(f"[bold]Agent Count:[/bold] {len(PARALLEL_CONFIGS)}")
+            parallel_content.append(f"[bold cyan]{t('agent_active_pattern_label')}[/bold cyan] {pattern_name}")
+            parallel_content.append(f"[bold]{t('agent_mode_parallel')}[/bold]")
+            parallel_content.append(f"[bold]{t('agent_agent_count', count=len(PARALLEL_CONFIGS))}[/bold]")
             parallel_content.append("")
-            parallel_content.append("[bold]Configured Agents:[/bold]")
+            parallel_content.append(f"[bold]{t('agent_configured_agents')}[/bold]")
 
             # Count instances of each agent type
             agent_counts = {}
@@ -874,7 +875,7 @@ class AgentCommand(Command):
 
             parallel_panel = Panel(
                 "\n".join(parallel_content),
-                title="Current Configuration",
+                title=t('agent_current_config'),
                 border_style="yellow",
                 expand=False,
             )
@@ -885,9 +886,9 @@ class AgentCommand(Command):
             current_agent_key = os.getenv("CAI_AGENT_TYPE", "one_tool_agent")
 
             if current_agent_key not in agents_to_display:
-                console.print(f"[red]Error: Current agent '{current_agent_key}' not found[/red]")
+                console.print(f"[red]{t('agent_error_not_found', key=current_agent_key)}[/red]")
                 console.print(
-                    f"[yellow]Available agents: {', '.join(agents_to_display.keys())}[/yellow]"
+                    f"[yellow]{t('agent_available_list', agents=', '.join(agents_to_display.keys()))}[/yellow]"
                 )
                 return False
 
@@ -896,41 +897,41 @@ class AgentCommand(Command):
 
             # Create main agent info panel
             main_content = []
-            main_content.append(f"[bold cyan]Active Agent:[/bold cyan] {agent_name}")
-            main_content.append(f"[bold]Agent Key:[/bold] {current_agent_key}")
+            main_content.append(f"[bold cyan]{t('agent_active_label')}[/bold cyan] {agent_name}")
+            main_content.append(f"[bold]{t('agent_key_label')}[/bold] {current_agent_key}")
 
             # Model information - get the actual model name
             if hasattr(current_agent, "model") and hasattr(current_agent.model, "model"):
                 model_display = current_agent.model.model
             else:
                 model_display = self._get_model_display_for_info(current_agent_key, current_agent)
-            main_content.append(f"[bold]Model:[/bold] {model_display}")
+            main_content.append(f"[bold]{t('agent_model_label')}[/bold] {model_display}")
 
             # Tools count
             tools = getattr(current_agent, "tools", [])
-            main_content.append(f"[bold]Tools:[/bold] {len(tools)}")
+            main_content.append(f"[bold]{t('agent_tools_label')}[/bold] {len(tools)}")
 
             # Handoffs
             handoffs = getattr(current_agent, "handoffs", [])
-            main_content.append(f"[bold]Handoffs:[/bold] {len(handoffs)}")
+            main_content.append(f"[bold]{t('agent_handoffs_label')}[/bold] {len(handoffs)}")
 
             main_panel = Panel(
                 "\n".join(main_content),
-                title="Current Configuration",
+                title=t('agent_current_config'),
                 border_style="green",
                 expand=False,
             )
             console.print(main_panel)
 
         # Show quick commands
-        console.print("\n[bold]Quick Commands:[/bold]")
-        console.print("• /agent list - Show all available agents and patterns")
-        console.print("• /agent select <name> - Switch to a different agent or pattern")
-        console.print("• /agent info <name> - Show detailed agent information")
+        console.print(f"\n[bold]{t('agent_quick_commands')}[/bold]")
+        console.print(f"• /agent list - {t('agent_qcmd_list')}")
+        console.print(f"• /agent select <name> - {t('agent_qcmd_select')}")
+        console.print(f"• /agent info <name> - {t('agent_qcmd_info')}")
         if parallel_enabled:
-            console.print("• /parallel - Manage parallel agent configuration")
+            console.print(f"• /parallel - {t('agent_qcmd_parallel')}")
         else:
-            console.print("• /parallel add - Configure parallel agents")
+            console.print(f"• /parallel add - {t('agent_qcmd_parallel_add')}")
 
         return True
 

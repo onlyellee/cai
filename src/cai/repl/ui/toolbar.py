@@ -12,6 +12,7 @@ import shutil
 from functools import lru_cache
 import requests  # pylint: disable=import-error
 from prompt_toolkit.formatted_text import HTML  # pylint: disable=import-error
+from cai.i18n import t
 
 # Variable to track when to refresh the toolbar
 toolbar_last_refresh = [datetime.datetime.now()]
@@ -89,7 +90,7 @@ def update_toolbar_in_background():
         if container_id:
             active_env_name, active_env_icon, active_env_color = get_container_info(container_id)
         else:
-            active_env_name, active_env_icon, active_env_color = "Host System", "💻", "ansiblue"
+            active_env_name, active_env_icon, active_env_color = t('toolbar_host_system'), "💻", "ansiblue"
 
 
         # Get Ollama information
@@ -242,7 +243,7 @@ def get_bottom_toolbar():
         current_time = datetime.datetime.now().strftime("%H:%M")
         timezone_name = datetime.datetime.now().astimezone().tzname()
         toolbar_cache['html'] = HTML(
-            f"<ansigray>Loading system information... {current_time} {timezone_name}</ansigray>"
+            f"<ansigray>{t('toolbar_loading')} {current_time} {timezone_name}</ansigray>"
         )
         # Start background update
         threading.Thread(
@@ -321,7 +322,7 @@ def get_container_info(container_id):
         ).stdout.strip()
 
         if not running:
-            image += " (stopped)"
+            image += f" {t('toolbar_stopped')}"
             color = "ansiyellow"
 
         return image, icon, color

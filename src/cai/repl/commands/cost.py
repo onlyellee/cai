@@ -15,6 +15,7 @@ from rich import box
 from cai.repl.commands.base import Command, register_command
 from cai.sdk.agents.global_usage_tracker import GLOBAL_USAGE_TRACKER
 from cai.util import COST_TRACKER
+from cai.i18n import t
 
 console = Console()
 
@@ -70,14 +71,14 @@ class CostCommand(Command):
 
     def handle_summary(self, args: Optional[List[str]] = None) -> bool:
         """Display cost summary including current session and global totals."""
-        console.print("\n[bold cyan]💰 CAI Usage Cost Summary[/bold cyan]")
+        console.print(f"\n[bold cyan]💰 {t('cost_summary_title')}[/bold cyan]")
         console.print("=" * 40)
-        
+
         # Current Session Panel
         session_content = self._get_session_summary()
         session_panel = Panel(
             session_content,
-            title="[cyan]Current Session[/cyan]",
+            title=f"[cyan]{t('cost_current_session')}[/cyan]",
             border_style="cyan",
             box=box.ROUNDED,
             padding=(1, 2)
@@ -87,7 +88,7 @@ class CostCommand(Command):
         global_content = self._get_global_summary()
         global_panel = Panel(
             global_content,
-            title="[green]Global Usage (All Time)[/green]",
+            title=f"[green]{t('cost_global_usage')}[/green]",
             border_style="green",
             box=box.ROUNDED,
             padding=(1, 2)
@@ -105,9 +106,9 @@ class CostCommand(Command):
         self._show_top_models_mini()
         
         # Show helpful commands
-        console.print("\n[dim]Use '/cost models' for detailed model breakdown[/dim]")
-        console.print("[dim]Use '/cost daily' for daily usage history[/dim]")
-        console.print("[dim]Use '/cost sessions' for recent session details[/dim]")
+        console.print(f"\n[dim]{t('cost_hint_models')}[/dim]")
+        console.print(f"[dim]{t('cost_hint_daily')}[/dim]")
+        console.print(f"[dim]{t('cost_hint_sessions')}[/dim]")
         
         return True
 
@@ -117,22 +118,22 @@ class CostCommand(Command):
         
         # Session cost
         session_cost = COST_TRACKER.session_total_cost
-        lines.append(f"[bold]Total Cost:[/bold] [yellow]${session_cost:.6f}[/yellow]")
-        
+        lines.append(f"[bold]{t('cost_total_cost')}[/bold] [yellow]${session_cost:.6f}[/yellow]")
+
         # Current agent costs
         if hasattr(COST_TRACKER, 'current_agent_total_cost'):
             agent_cost = COST_TRACKER.current_agent_total_cost
             if agent_cost > 0:
-                lines.append(f"[bold]Current Agent:[/bold] ${agent_cost:.6f}")
-        
+                lines.append(f"[bold]{t('cost_current_agent_cost')}[/bold] ${agent_cost:.6f}")
+
         # Token usage
         if hasattr(COST_TRACKER, 'current_agent_input_tokens'):
             input_tokens = COST_TRACKER.current_agent_input_tokens
             output_tokens = COST_TRACKER.current_agent_output_tokens
             total_tokens = input_tokens + output_tokens
-            
+
             lines.append("")
-            lines.append(f"[bold]Tokens Used:[/bold]")
+            lines.append(f"[bold]{t('cost_tokens_used')}[/bold]")
             lines.append(f"  Input:  {input_tokens:,}")
             lines.append(f"  Output: {output_tokens:,}")
             lines.append(f"  Total:  {total_tokens:,}")
@@ -144,8 +145,8 @@ class CostCommand(Command):
         lines = []
         
         if not GLOBAL_USAGE_TRACKER.enabled:
-            lines.append("[yellow]Usage tracking is disabled[/yellow]")
-            lines.append("[dim]Set CAI_DISABLE_USAGE_TRACKING=false to enable[/dim]")
+            lines.append(f"[yellow]{t('cost_tracking_disabled')}[/yellow]")
+            lines.append(f"[dim]{t('cost_tracking_enable_hint')}[/dim]")
             return "\n".join(lines)
         
         summary = GLOBAL_USAGE_TRACKER.get_summary()
@@ -153,15 +154,15 @@ class CostCommand(Command):
         
         # Global cost
         total_cost = totals.get("total_cost", 0.0)
-        lines.append(f"[bold]Total Cost:[/bold] [green]${total_cost:.6f}[/green]")
-        
+        lines.append(f"[bold]{t('cost_total_cost')}[/bold] [green]${total_cost:.6f}[/green]")
+
         # Sessions
         total_sessions = totals.get("total_sessions", 0)
-        lines.append(f"[bold]Total Sessions:[/bold] {total_sessions}")
-        
+        lines.append(f"[bold]{t('cost_total_sessions')}[/bold] {total_sessions}")
+
         # Requests
         total_requests = totals.get("total_requests", 0)
-        lines.append(f"[bold]Total Requests:[/bold] {total_requests:,}")
+        lines.append(f"[bold]{t('cost_total_requests')}[/bold] {total_requests:,}")
         
         # Tokens
         input_tokens = totals.get("total_input_tokens", 0)
@@ -169,7 +170,7 @@ class CostCommand(Command):
         total_tokens = input_tokens + output_tokens
         
         lines.append("")
-        lines.append(f"[bold]Total Tokens:[/bold]")
+        lines.append(f"[bold]{t('cost_total_tokens')}[/bold]")
         lines.append(f"  Input:  {input_tokens:,}")
         lines.append(f"  Output: {output_tokens:,}")
         lines.append(f"  Total:  {total_tokens:,}")
@@ -178,7 +179,7 @@ class CostCommand(Command):
         if total_sessions > 0:
             avg_cost = total_cost / total_sessions
             lines.append("")
-            lines.append(f"[bold]Avg per Session:[/bold] ${avg_cost:.6f}")
+            lines.append(f"[bold]{t('cost_avg_per_session')}[/bold] ${avg_cost:.6f}")
         
         return "\n".join(lines)
 
@@ -193,7 +194,7 @@ class CostCommand(Command):
         if not top_models:
             return
         
-        console.print("\n[bold]Top Models by Cost:[/bold]")
+        console.print(f"\n[bold]{t('cost_top_models')}[/bold]")
         
         # Create a simple bar chart
         max_cost = top_models[0][1] if top_models else 0
@@ -210,30 +211,30 @@ class CostCommand(Command):
     def handle_models(self, args: Optional[List[str]] = None) -> bool:
         """Show detailed costs by model."""
         if not GLOBAL_USAGE_TRACKER.enabled:
-            console.print("[yellow]Usage tracking is disabled[/yellow]")
+            console.print(f"[yellow]{t('cost_tracking_disabled')}[/yellow]")
             return True
-        
+
         usage_data = GLOBAL_USAGE_TRACKER.usage_data
         model_usage = usage_data.get("model_usage", {})
-        
+
         if not model_usage:
-            console.print("[yellow]No model usage data available[/yellow]")
+            console.print(f"[yellow]{t('cost_no_model_usage')}[/yellow]")
             return True
-        
+
         # Create detailed model table
         table = Table(
-            title="[bold cyan]Model Usage Statistics[/bold cyan]",
+            title=f"[bold cyan]{t('cost_model_usage_title')}[/bold cyan]",
             show_header=True,
             header_style="bold",
             box=box.ROUNDED
         )
         
-        table.add_column("Model", style="cyan", no_wrap=True)
-        table.add_column("Total Cost", style="green", justify="right")
-        table.add_column("Requests", style="yellow", justify="right")
-        table.add_column("Input Tokens", style="blue", justify="right")
-        table.add_column("Output Tokens", style="magenta", justify="right")
-        table.add_column("Avg Cost/Request", style="white", justify="right")
+        table.add_column(t('cost_col_model'), style="cyan", no_wrap=True)
+        table.add_column(t('cost_col_total_cost'), style="green", justify="right")
+        table.add_column(t('cost_col_requests'), style="yellow", justify="right")
+        table.add_column(t('cost_col_input_tokens'), style="blue", justify="right")
+        table.add_column(t('cost_col_output_tokens'), style="magenta", justify="right")
+        table.add_column(t('cost_col_avg_cost'), style="white", justify="right")
         
         # Sort by cost descending
         sorted_models = sorted(
@@ -284,7 +285,7 @@ class CostCommand(Command):
         
         # Show cost breakdown pie chart (text-based)
         if len(sorted_models) > 0:
-            console.print("\n[bold]Cost Distribution:[/bold]")
+            console.print(f"\n[bold]{t('cost_distribution')}[/bold]")
             for model, stats in sorted_models[:5]:  # Top 5
                 cost = stats.get("total_cost", 0)
                 percentage = (cost / total_cost * 100) if total_cost > 0 else 0
@@ -297,29 +298,29 @@ class CostCommand(Command):
     def handle_daily(self, args: Optional[List[str]] = None) -> bool:
         """Show daily usage breakdown."""
         if not GLOBAL_USAGE_TRACKER.enabled:
-            console.print("[yellow]Usage tracking is disabled[/yellow]")
+            console.print(f"[yellow]{t('cost_tracking_disabled')}[/yellow]")
             return True
-        
+
         usage_data = GLOBAL_USAGE_TRACKER.usage_data
         daily_usage = usage_data.get("daily_usage", {})
-        
+
         if not daily_usage:
-            console.print("[yellow]No daily usage data available[/yellow]")
+            console.print(f"[yellow]{t('cost_no_daily_usage')}[/yellow]")
             return True
-        
+
         # Create daily usage table
         table = Table(
-            title="[bold cyan]Daily Usage Statistics[/bold cyan]",
+            title=f"[bold cyan]{t('cost_daily_title')}[/bold cyan]",
             show_header=True,
             header_style="bold",
             box=box.ROUNDED
         )
         
-        table.add_column("Date", style="cyan")
-        table.add_column("Cost", style="green", justify="right")
-        table.add_column("Requests", style="yellow", justify="right")
-        table.add_column("Tokens", style="blue", justify="right")
-        table.add_column("Trend", style="white", justify="center")
+        table.add_column(t('cost_col_date'), style="cyan")
+        table.add_column(t('cost_col_cost'), style="green", justify="right")
+        table.add_column(t('cost_col_requests'), style="yellow", justify="right")
+        table.add_column(t('cost_col_tokens'), style="blue", justify="right")
+        table.add_column(t('cost_col_trend'), style="white", justify="center")
         
         # Sort by date descending
         sorted_days = sorted(daily_usage.items(), reverse=True)
@@ -355,7 +356,7 @@ class CostCommand(Command):
                 
                 # Highlight today
                 if date_obj.date() == datetime.now().date():
-                    date_str = f"[bold]{date_str} (Today)[/bold]"
+                    date_str = f"[bold]{date_str} ({t('cost_today')})[/bold]"
             except:
                 date_str = date
             
@@ -379,7 +380,7 @@ class CostCommand(Command):
         if not sorted_days:
             return
         
-        console.print("\n[bold]Weekly Summary:[/bold]")
+        console.print(f"\n[bold]{t('cost_weekly_summary')}[/bold]")
         
         # Group by week
         weekly_costs = {}
@@ -409,14 +410,14 @@ class CostCommand(Command):
     def handle_sessions(self, args: Optional[List[str]] = None) -> bool:
         """Show recent session details."""
         if not GLOBAL_USAGE_TRACKER.enabled:
-            console.print("[yellow]Usage tracking is disabled[/yellow]")
+            console.print(f"[yellow]{t('cost_tracking_disabled')}[/yellow]")
             return True
-        
+
         usage_data = GLOBAL_USAGE_TRACKER.usage_data
         sessions = usage_data.get("sessions", [])
-        
+
         if not sessions:
-            console.print("[yellow]No session data available[/yellow]")
+            console.print(f"[yellow]{t('cost_no_session_data')}[/yellow]")
             return True
         
         # Show last N sessions (default 10)
@@ -428,18 +429,18 @@ class CostCommand(Command):
         
         # Create sessions table
         table = Table(
-            title=f"[bold cyan]Recent {len(recent_sessions)} Sessions[/bold cyan]",
+            title=f"[bold cyan]{t('cost_recent_sessions', count=len(recent_sessions))}[/bold cyan]",
             show_header=True,
             header_style="bold",
             box=box.ROUNDED
         )
         
-        table.add_column("Session ID", style="cyan", no_wrap=True)
-        table.add_column("Start Time", style="white")
-        table.add_column("Duration", style="yellow", justify="right")
-        table.add_column("Cost", style="green", justify="right")
-        table.add_column("Requests", style="blue", justify="right")
-        table.add_column("Models Used", style="magenta")
+        table.add_column(t('cost_col_session_id'), style="cyan", no_wrap=True)
+        table.add_column(t('cost_col_start_time'), style="white")
+        table.add_column(t('cost_col_duration'), style="yellow", justify="right")
+        table.add_column(t('cost_col_cost'), style="green", justify="right")
+        table.add_column(t('cost_col_requests'), style="blue", justify="right")
+        table.add_column(t('cost_col_models_used'), style="magenta")
         
         for session in reversed(recent_sessions):  # Show newest first
             session_id = session.get("session_id", "Unknown")[:8] + "..."
@@ -478,7 +479,7 @@ class CostCommand(Command):
                 except:
                     duration_str = "Unknown"
             else:
-                duration_str = "[yellow]Active[/yellow]"
+                duration_str = f"[yellow]{t('cost_active')}[/yellow]"
             
             # Format models
             if models:
@@ -504,29 +505,29 @@ class CostCommand(Command):
         completed_sessions = len(sessions) - active_sessions
         total_session_cost = sum(s.get("total_cost", 0) for s in sessions)
         
-        console.print(f"\n[bold]Session Statistics:[/bold]")
-        console.print(f"  Total Sessions: {len(sessions)}")
-        console.print(f"  Active Sessions: {active_sessions}")
-        console.print(f"  Completed Sessions: {completed_sessions}")
-        console.print(f"  Total Cost Across All Sessions: ${total_session_cost:.6f}")
-        
+        console.print(f"\n[bold]{t('cost_session_stats')}[/bold]")
+        console.print(f"  {t('cost_total_sessions_count', count=len(sessions))}")
+        console.print(f"  {t('cost_active_sessions', count=active_sessions)}")
+        console.print(f"  {t('cost_completed_sessions', count=completed_sessions)}")
+        console.print(f"  {t('cost_total_all_sessions', cost=f'{total_session_cost:.6f}')}")
+
         if completed_sessions > 0:
             avg_session_cost = total_session_cost / len(sessions)
-            console.print(f"  Average Cost per Session: ${avg_session_cost:.6f}")
+            console.print(f"  {t('cost_avg_session_cost', cost=f'{avg_session_cost:.6f}')}")
         
         return True
 
     def handle_reset(self, args: Optional[List[str]] = None) -> bool:
         """Reset usage statistics (with confirmation)."""
         if not GLOBAL_USAGE_TRACKER.enabled:
-            console.print("[yellow]Usage tracking is disabled[/yellow]")
+            console.print(f"[yellow]{t('cost_tracking_disabled')}[/yellow]")
             return True
-        
+
         from pathlib import Path
         usage_file = Path.home() / ".cai" / "usage.json"
-        
+
         if not usage_file.exists():
-            console.print("[yellow]No usage data to reset[/yellow]")
+            console.print(f"[yellow]{t('cost_no_usage_data')}[/yellow]")
             return True
         
         # Show current totals before reset
@@ -535,11 +536,11 @@ class CostCommand(Command):
         total_cost = totals.get("total_cost", 0)
         total_sessions = totals.get("total_sessions", 0)
         
-        console.print(f"\n[bold red]Warning:[/bold red] This will reset all usage statistics!")
-        console.print(f"Current totals: ${total_cost:.6f} across {total_sessions} sessions")
-        
+        console.print(f"\n[bold red]Warning:[/bold red] {t('cost_reset_warning')}")
+        console.print(t('cost_reset_current', cost=f'{total_cost:.6f}', sessions=total_sessions))
+
         # Require explicit confirmation
-        console.print("\nType 'RESET' to confirm (or anything else to cancel):")
+        console.print(f"\n{t('cost_reset_confirm')}")
         confirmation = console.input("> ")
         
         if confirmation == "RESET":
@@ -550,17 +551,17 @@ class CostCommand(Command):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_file = usage_file.with_name(f"usage_backup_{timestamp}.json")
             shutil.copy2(usage_file, backup_file)
-            console.print(f"[green]Backup created:[/green] {backup_file}")
-            
+            console.print(f"[green]{t('cost_backup_created')}[/green] {backup_file}")
+
             # Reset the file
             usage_file.unlink()
-            console.print("[green]Usage statistics have been reset[/green]")
+            console.print(f"[green]{t('cost_reset_done')}[/green]")
             
             # Reinitialize the tracker
             GLOBAL_USAGE_TRACKER._initialized = False
             GLOBAL_USAGE_TRACKER.__init__()
         else:
-            console.print("[yellow]Reset cancelled[/yellow]")
+            console.print(f"[yellow]{t('cost_reset_cancelled')}[/yellow]")
         
         return True
 

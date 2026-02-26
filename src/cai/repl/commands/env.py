@@ -11,6 +11,7 @@ from rich.console import Console  # pylint: disable=import-error
 from rich.table import Table  # pylint: disable=import-error
 
 from cai.repl.commands.base import Command, register_command
+from cai.i18n import t
 
 console = Console()
 
@@ -50,12 +51,12 @@ class EnvCommand(Command):
 
         if not env_vars:
             console.print(
-                "[yellow]No CAI_ or CTF_ environment variables found[/yellow]")
+                f"[yellow]{t('env_no_vars')}[/yellow]")
             return True
 
         # Create a table to display the variables
         table = Table(
-            title="Environment Variables",
+            title=t('env_title'),
             show_header=True,
             header_style="bold magenta")
         table.add_column("Variable", style="cyan")

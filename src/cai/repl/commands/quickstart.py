@@ -16,6 +16,7 @@ from rich.text import Text
 from rich import box
 
 from cai.repl.commands.base import Command, register_command
+from cai.i18n import t
 
 console = Console()
 
@@ -166,20 +167,19 @@ class QuickstartCommand(Command):
         console.print(
             Panel(
                 Text.from_markup(
-                    "[bold cyan]Welcome to CAI (Cybersecurity AI)![/bold cyan]\n\n"
-                    "[yellow]AI-powered security framework for penetration testing, "
-                    "bug bounty hunting, and CTF challenges.[/yellow]\n\n"
-                    "This quickstart guide will help you get started with CAI."
+                    f"[bold cyan]{t('qs_welcome')}[/bold cyan]\n\n"
+                    f"[yellow]{t('qs_welcome_desc')}[/yellow]\n\n"
+                    f"{t('qs_welcome_guide')}"
                 ),
-                title="🚀 CAI Quickstart",
+                title=f"🚀 {t('qs_title')}",
                 border_style="cyan",
                 box=box.DOUBLE,
             )
         )
 
         # Step 1: API Requirements
-        console.print("\n[bold yellow]📋 Step 1: API Requirements[/bold yellow]\n")
-        console.print("CAI requires at least one AI provider API key to function:")
+        console.print(f"\n[bold yellow]📋 {t('qs_step1_title')}[/bold yellow]\n")
+        console.print(t('qs_step1_desc'))
         
         api_keys = self.check_api_keys()
         
@@ -200,18 +200,18 @@ class QuickstartCommand(Command):
         if not any(api_keys.values()):
             console.print(
                 Panel(
-                    "[red]⚠️  No API keys detected![/red]\n\n"
-                    "You need at least one API key to use CAI.\n"
-                    "Set it in your shell or .env file:\n\n"
+                    f"[red]⚠️  {t('qs_no_api_keys')}[/red]\n\n"
+                    f"{t('qs_need_api_key')}\n"
+                    f"{t('qs_set_api_key')}\n\n"
                     "[yellow]export PROVIDER_API_KEY='your-key-here'[/yellow]\n\n"
-                    "Replace PROVIDER with your model provider name\n",
+                    f"{t('qs_replace_provider')}\n",
                     border_style="red",
                 )
             )
 
         # Step 2: Local Models (Ollama)
-        console.print("\n[bold yellow]🖥️  Step 2: Local Models (Optional)[/bold yellow]\n")
-        console.print("For local model support, CAI can use Ollama:")
+        console.print(f"\n[bold yellow]🖥️  {t('qs_step2_title')}[/bold yellow]\n")
+        console.print(t('qs_step2_desc'))
         
         # Check Ollama endpoints
         ollama_table = Table(show_header=True, header_style="bold")
@@ -232,13 +232,13 @@ class QuickstartCommand(Command):
         console.print(ollama_table)
         
         if is_accessible and models:
-            console.print(f"\n[green]Available Ollama models:[/green] {', '.join(models[:5])}")
+            console.print(f"\n[green]{t('qs_available_ollama')}[/green] {', '.join(models[:5])}")
             if len(models) > 5:
                 console.print(f"[dim]... and {len(models) - 5} more[/dim]")
         
         console.print(
             Panel(
-                "[cyan]To use Ollama:[/cyan]\n"
+                f"[cyan]{t('qs_ollama_use')}[/cyan]\n"
                 "1. Install: [yellow]curl -fsSL https://ollama.com/install.sh | sh[/yellow]\n"
                 "2. Pull a model: [yellow]ollama pull llama3.1[/yellow]\n"
                 "3. Set in .env: "
@@ -249,24 +249,24 @@ class QuickstartCommand(Command):
         )
 
         # Step 3: Choose Your Model
-        console.print("\n[bold yellow]🤖 Step 3: Choose Your Model[/bold yellow]\n")
+        console.print(f"\n[bold yellow]🤖 {t('qs_step3_title')}[/bold yellow]\n")
         
         # Check which API keys are available
         has_api_keys = any(api_keys.values())
         
         if has_api_keys:
-            console.print("Great! You have API keys configured. Now you need to select a model.")
-            console.print("\n[cyan]To see which models are available for your API keys:[/cyan]")
+            console.print(t('qs_has_api_keys'))
+            console.print(f"\n[cyan]{t('qs_see_models')}[/cyan]")
             console.print("  [yellow]1.[/yellow] Run: [bold green]/model-show[/bold green] to see all available models")
             console.print("  [yellow]2.[/yellow] Run: [bold green]/model-show supported[/bold green] to see only models with function calling support")
             console.print("  [yellow]3.[/yellow] Select a model: [bold green]/model <model-name>[/bold green]")
-            console.print("\n[dim]Note: The default model 'alias1' requires configuration. Please select a specific model.[/dim]")
+            console.print(f"\n[dim]{t('qs_default_note')}[/dim]")
         else:
             console.print(
                 Panel(
-                    "[red]⚠️  No API keys detected![/red]\n\n"
-                    "You need to set up at least one API key before choosing a model.\n"
-                    "Once you have an API key configured:\n\n"
+                    f"[red]⚠️  {t('qs_no_api_keys_model')}[/red]\n\n"
+                    f"{t('qs_need_api_first')}\n"
+                    f"{t('qs_once_configured')}\n\n"
                     "1. Run [yellow]/model-show[/yellow] to see available models\n"
                     "2. Select a model with [yellow]/model <model-name>[/yellow]",
                     border_style="red",
@@ -274,7 +274,7 @@ class QuickstartCommand(Command):
             )
         
         # Step 4: Core Commands
-        console.print("\n[bold yellow]🎯 Step 4: Essential Commands[/bold yellow]\n")
+        console.print(f"\n[bold yellow]🎯 {t('qs_step4_title')}[/bold yellow]\n")
         
         commands_table = Table(show_header=True, header_style="bold", box=box.SIMPLE)
         commands_table.add_column("Command", style="cyan")
@@ -299,22 +299,22 @@ class QuickstartCommand(Command):
         console.print(commands_table)
 
         # Step 5: Quick Examples
-        console.print("\n[bold yellow]💡 Step 5: Quick Examples[/bold yellow]\n")
+        console.print(f"\n[bold yellow]💡 {t('qs_step5_title')}[/bold yellow]\n")
         
         examples = [
-            ("[bold]Basic CTF Challenge:[/bold]", [
+            (f"[bold]{t('qs_example_ctf')}[/bold]", [
                 "# Select the CTF agent",
                 "/agent select one_tool_agent",
                 "# Describe your challenge",
                 "I have a binary at /tmp/challenge that asks for a password",
             ]),
-            ("[bold]Web Security Testing:[/bold]", [
+            (f"[bold]{t('qs_example_web')}[/bold]", [
                 "# Switch to bug bounty agent",
                 "/agent select bug_bounter",
                 "# Test a website",
                 "Test https://example.com for common vulnerabilities",
             ]),
-            ("[bold]Network Reconnaissance:[/bold]", [
+            (f"[bold]{t('qs_example_network')}[/bold]", [
                 "# Use the red team agent",
                 "/agent select red_teamer",
                 "# Scan network",
@@ -332,19 +332,19 @@ class QuickstartCommand(Command):
             console.print()
 
         # Step 6: Features Overview
-        console.print("\n[bold yellow]🛠️  Step 6: Key Features[/bold yellow]\n")
+        console.print(f"\n[bold yellow]🛠️  {t('qs_step6_title')}[/bold yellow]\n")
         
         features_table = Table(show_header=False, box=None)
         features_table.add_column(style="cyan", width=25)
         features_table.add_column(style="white")
         
         features = [
-            ("Multiple Agents", "Specialized AI agents for different security tasks"),
-            ("Tool Integration", "Execute commands, analyze code, search web"),
-            ("Parallel Execution", "Run multiple agents simultaneously"),
-            ("Memory System", "Persistent context across sessions"),
-            ("MCP Support", "Extend with external tool servers"),
-            ("Docker Integration", "Run tools in isolated containers"),
+            (t('qs_feature_agents'), t('qs_feature_agents_desc')),
+            (t('qs_feature_tools'), t('qs_feature_tools_desc')),
+            (t('qs_feature_parallel'), t('qs_feature_parallel_desc')),
+            (t('qs_feature_memory'), t('qs_feature_memory_desc')),
+            (t('qs_feature_mcp'), t('qs_feature_mcp_desc')),
+            (t('qs_feature_docker'), t('qs_feature_docker_desc')),
         ]
         
         for feature, desc in features:
@@ -354,25 +354,25 @@ class QuickstartCommand(Command):
 
         # Configuration directory info
         cai_dir = Path.home() / ".cai"
-        console.print("\n[bold yellow]📁 Configuration Directory[/bold yellow]\n")
-        console.print(f"CAI stores configuration and logs in: [cyan]{cai_dir}[/cyan]")
-        
+        console.print(f"\n[bold yellow]📁 {t('qs_config_dir')}[/bold yellow]\n")
+        console.print(f"{t('qs_config_path', path=f'[cyan]{cai_dir}[/cyan]')}")
+
         if not cai_dir.exists():
-            console.print("[yellow]→ This directory will be created on first run[/yellow]")
+            console.print(f"[yellow]→ {t('qs_config_will_create')}[/yellow]")
         else:
-            console.print("[green]✓ Directory exists[/green]")
+            console.print(f"[green]✓ {t('qs_config_exists')}[/green]")
 
         # Next steps
         console.print(
             Panel(
-                "[bold]🎉 You're ready to start![/bold]\n\n"
-                "[cyan]Next steps:[/cyan]\n"
+                f"[bold]🎉 {t('qs_ready_message')}[/bold]\n\n"
+                f"[cyan]{t('qs_next_steps')}[/cyan]\n"
                 "1. Set up at least one API key (see table above)\n"
                 "2. Try the examples to get familiar with CAI\n"
                 "3. Use [yellow]/help[/yellow] for detailed command information\n"
                 "4. Join our community for support and updates\n\n"
                 "[dim]This guide: /quickstart | Hide on startup: Create ~/.cai directory[/dim]",
-                title="Ready to Go!",
+                title=t('qs_ready_title'),
                 border_style="green",
             )
         )
