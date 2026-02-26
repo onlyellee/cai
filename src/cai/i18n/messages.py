@@ -89,6 +89,32 @@ EN = {
     "help_usage": "Usage",
     "help_examples": "Examples",
     "help_options": "Options",
+
+    # === Util: Tool Display ===
+    "tool_call": "Tool Call:",
+    "tool_name": "Name:",
+    "tool_args": "Args:",
+    "tool_output": "Output:",
+    "current_agent": "Current Agent",
+    "reasoning_header": "{model} Reasoning | {agent_name} | {model_name} | {timestamp}",
+
+    # === Util: CTF ===
+    "flag_found": "Flag found: {flag}",
+    "flag_in_output": " in output ",
+    "ctf_not_found": "CTF environment not found or provided",
+    "ctf_name_required": "CTF name not provided, necessary to run CTF",
+    "ctf_module_unavailable": "pentestperf module not available, cannot setup CTF",
+    "ctf_setting_up": "Setting up CTF: ",
+    "ctf_testing": "Testing CTF: ",
+    "ctf_no_challenge": "No challenge provided or challenge not found. Attempting to use the first challenge.",
+    "ctf_testing_challenge": "Testing challenge: ",
+
+    # === Util: Streaming & Errors ===
+    "error_streaming_cleanup": "Error during streaming cleanup: {error}",
+    "error_thinking_context": "Error creating {model} thinking context: {error}",
+    "error_thinking_start": "Error starting {model} thinking display: {error}",
+    "error_thinking_update": "Error updating {model} thinking content: {error}",
+    "error_thinking_finish": "Error finishing {model} thinking display: {error}",
 }
 
 KO = {
@@ -175,6 +201,32 @@ KO = {
     "help_usage": "사용법",
     "help_examples": "예시",
     "help_options": "옵션",
+
+    # === Util: Tool Display ===
+    "tool_call": "도구 호출:",
+    "tool_name": "이름:",
+    "tool_args": "인자:",
+    "tool_output": "출력:",
+    "current_agent": "현재 에이전트",
+    "reasoning_header": "{model} 추론 | {agent_name} | {model_name} | {timestamp}",
+
+    # === Util: CTF ===
+    "flag_found": "플래그 발견: {flag}",
+    "flag_in_output": " 출력에서 발견 ",
+    "ctf_not_found": "CTF 환경을 찾을 수 없거나 제공되지 않았습니다",
+    "ctf_name_required": "CTF 이름이 제공되지 않았습니다. CTF 실행에 필요합니다",
+    "ctf_module_unavailable": "pentestperf 모듈을 사용할 수 없습니다. CTF 설정 불가",
+    "ctf_setting_up": "CTF 설정 중: ",
+    "ctf_testing": "CTF 테스트 중: ",
+    "ctf_no_challenge": "챌린지가 제공되지 않았거나 찾을 수 없습니다. 첫 번째 챌린지를 시도합니다.",
+    "ctf_testing_challenge": "챌린지 테스트 중: ",
+
+    # === Util: Streaming & Errors ===
+    "error_streaming_cleanup": "스트리밍 정리 중 오류: {error}",
+    "error_thinking_context": "{model} 추론 컨텍스트 생성 오류: {error}",
+    "error_thinking_start": "{model} 추론 표시 시작 오류: {error}",
+    "error_thinking_update": "{model} 추론 내용 업데이트 오류: {error}",
+    "error_thinking_finish": "{model} 추론 표시 종료 오류: {error}",
 }
 
 MESSAGES = {

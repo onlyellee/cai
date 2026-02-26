@@ -28,6 +28,7 @@ from rich.theme import Theme  # pylint: disable=import-error
 from rich.traceback import install  # pylint: disable=import-error
 from rich.tree import Tree
 from wasabi import color
+from cai.i18n import t
 
 from cai import is_pentestperf_available
 
@@ -511,7 +512,7 @@ class CostTracker:
         # Skip displaying cost if already shown in the session summary
         if os.environ.get("CAI_COST_DISPLAYED", "").lower() == "true":
             return
-        print(f"\nTotal CAI Session Cost: ${self.session_total_cost:.6f}")
+        print(f"\n{t('session_cost', cost=f'{self.session_total_cost:.6f}')}")
 
     def get_model_pricing(self, model_name: str) -> tuple:
         """Get and cache pricing information for a model"""
@@ -539,7 +540,7 @@ class CostTracker:
                         self.model_pricing_cache[model_name] = (input_cost, output_cost)
                         return input_cost, output_cost
         except Exception as e:
-            print(f"  WARNING: Error loading local pricing.json: {str(e)}")
+            print(f"  {t('warning_pricing_local', error=str(e))}")
 
         # Fallback to LiteLLM API if local pricing not found
         LITELLM_URL = (
@@ -568,7 +569,7 @@ class CostTracker:
                 import requests
                 test_response = requests.get("https://aliasrobotics.com/", timeout=1)
                 # The pricing URL failed
-                print(f"  WARNING: Error fetching model pricing: {str(e)}")
+                print(f"  {t('warning_pricing_fetch', error=str(e))}")
             except Exception:
                 # No internet connection, silently skip the warning
                 pass
@@ -881,7 +882,7 @@ def create_system_prompt_renderer(base_instructions):
         except Exception as e:
             # If rendering fails, fall back to base instructions
             import traceback
-            print(f"Warning: Failed to render system master template: {e}")
+            print(t('warning_template', error=str(e)))
             if os.getenv('CAI_DEBUG', '0') == '2':
                 traceback.print_exc()
             return base_instructions
@@ -934,10 +935,10 @@ def visualize_agent_graph(start_agent):
     """
     console = Console()
     if start_agent is None:
-        console.print("[red]No agent provided to visualize.[/red]")
+        console.print(f"[red]{t('no_agent_visualize')}[/red]")
         return
 
-    tree = Tree(f"🤖 {start_agent.name} (Current Agent)", guide_style="bold blue")
+    tree = Tree(f"🤖 {start_agent.name} ({t('current_agent')})", guide_style="bold blue")
 
     visited = set()
     agent_nodes = {}
@@ -1419,12 +1420,12 @@ def cli_print_tool_call(tool_name="", args="", output="", prefix="  "):
     if not tool_name:
         return
 
-    print(f"{prefix}{color('Tool Call:', fg='cyan')}")
-    print(f"{prefix}{color('Name:', fg='cyan')} {tool_name}")
+    print(f"{prefix}{color(t('tool_call'), fg='cyan')}")
+    print(f"{prefix}{color(t('tool_name'), fg='cyan')} {tool_name}")
     if args:
-        print(f"{prefix}{color('Args:', fg='cyan')} {args}")
+        print(f"{prefix}{color(t('tool_args'), fg='cyan')} {args}")
     if output:
-        print(f"{prefix}{color('Output:', fg='cyan')} {output}")
+        print(f"{prefix}{color(t('tool_output'), fg='cyan')} {output}")
 
 
 def get_model_input_tokens(model):
@@ -4357,13 +4358,13 @@ def check_flag(output, ctf, challenge=None):
         if ctf.check_flag(output, challenge):  # check if the flag is in the output
             flag = ctf.flags[challenge]
             print(
-                color(f"Flag found: {flag}", fg="green")
-                + " in output "
+                color(t('flag_found', flag=flag), fg="green")
+                + t('flag_in_output')
                 + color(f"{output}", fg="blue")
             )
             return True, flag
     else:
-        print(color("CTF environment not found or provided", fg="yellow"))
+        print(color(t('ctf_not_found'), fg="yellow"))
     return False, None
 
 
@@ -4371,15 +4372,15 @@ def setup_ctf():
     """Setup CTF environment if CTF_NAME is provided"""
     ctf_name = os.getenv("CTF_NAME", None)
     if not ctf_name:
-        print(color("CTF name not provided, necessary to run CTF", fg="white", bg="red"))
+        print(color(t('ctf_name_required'), fg="white", bg="red"))
         sys.exit(1)
 
     if not PTT_AVAILABLE or ptt is None:
-        print(color("pentestperf module not available, cannot setup CTF", fg="white", bg="red"))
+        print(color(t('ctf_module_unavailable'), fg="white", bg="red"))
         sys.exit(1)
 
     print(
-        color("Setting up CTF: ", fg="black", bg="yellow")
+        color(t('ctf_setting_up'), fg="black", bg="yellow")
         + color(ctf_name, fg="black", bg="yellow")
     )
 
@@ -4409,19 +4410,19 @@ def setup_ctf():
     )
 
     print(
-        color("Testing CTF: ", fg="black", bg="yellow") + color(ctf.name, fg="black", bg="yellow")
+        color(t('ctf_testing'), fg="black", bg="yellow") + color(ctf.name, fg="black", bg="yellow")
     )
     if not challenge_key or challenge_key not in challenges:
         print(
             color(
-                "No challenge provided or challenge not found. Attempting to use the first challenge.",
+                t('ctf_no_challenge'),
                 fg="white",
                 bg="blue",
             )
         )
     if challenge:
         print(
-            color("Testing challenge: ", fg="white", bg="blue")
+            color(t('ctf_testing_challenge'), fg="white", bg="blue")
             + color(
                 "'" + challenge + "' (" + repr(ctf.flags[challenge]) + ")", fg="white", bg="blue"
             )
@@ -4745,7 +4746,7 @@ def print_claude_reasoning_simple(reasoning_content, agent_name, model_name):
 
     # Simple text output without Rich formatting
     timestamp = datetime.now().strftime("%H:%M:%S")
-    print(f"\n🧠 {model_display} Reasoning | {agent_name} | {model_name} | {timestamp}")
+    print(f"\n🧠 {t('reasoning_header', model=model_display, agent_name=agent_name, model_name=model_name, timestamp=timestamp)}")
     print("=" * 60)
     print(reasoning_content)
     print("=" * 60 + "\n")
