@@ -295,7 +295,7 @@ def get_container_info(container_id):
 
     Returns:
         tuple: A tuple containing:
-            - container_name (str): The image name (with "(stopped)" suffix if not running).
+            - container_name (str): The image name (with t('toolbar_stopped') suffix if not running).
             - icon (str): An emoji representing the container type or status.
             - color (str): A string representing the display color (e.g., for UI rendering).
     """

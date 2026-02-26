@@ -209,9 +209,9 @@ def display_framework_capabilities(console: Console):
         padding=(0, 2)
     )
 
-    table.add_column(t('agent_col_agent'), style="bold cyan")
+    table.add_column("Category", style="bold cyan")
     table.add_column("Count", style="bold yellow")
-    table.add_column(t('help_description'), style="white")
+    table.add_column("Description", style="white")
 
     # Add rows for different capabilities
     table.add_row(
@@ -251,13 +251,13 @@ def display_welcome_tips(console: Console):
         console: Rich console for output
     """
     console.print(Panel(
-        f"[white]• {t('welcome_tip_arrows')}[/white]\n"
-        f"[white]• {t('welcome_tip_tab')}[/white]\n"
-        f"[white]• {t('welcome_tip_help')}[/white]\n"
-        f"[white]• {t('welcome_tip_aliases')}[/white]\n"
-        f"[white]• {t('welcome_tip_clear')}[/white]\n"
-        f"[white]• {t('welcome_tip_multiline')}[/white]\n"
-        f"[white]• {t('welcome_tip_exit')}[/white]",
+        "[white]• Use arrow keys ↑↓ to navigate command history[/white]\n"
+        "[white]• Press Tab for command completion[/white]\n"
+        "[white]• Type /help for available commands[/white]\n"
+        "[white]• Type /help aliases for command shortcuts[/white]\n"
+        "[white]• Press Ctrl+L to clear the screen[/white]\n"
+        "[white]• Press Esc+Enter to add a new line (multiline input)[/white]\n"
+        "[white]• Press Ctrl+C to exit[/white]",
         title=t('welcome_tips_title'),
         border_style="blue"
     ))
@@ -282,21 +282,21 @@ def display_agent_overview(console: Console):
         padding=(0, 1)
     )
     
-    agents_table.add_column(t('agent_col_agent'), style="cyan", width=25)
-    agents_table.add_column(t('agent_col_specialization'), style="white")
-    agents_table.add_column(t('agent_col_best_for'), style="green")
-
+    agents_table.add_column("Agent", style="cyan", width=25)
+    agents_table.add_column("Specialization", style="white")
+    agents_table.add_column("Best For", style="green")
+    
     # Add agent rows
     agents = [
-        ("one_tool_agent", t('agent_basic_ctf'), t('agent_basic_ctf_for')),
-        ("red_teamer", t('agent_offensive'), t('agent_offensive_for')),
-        ("blue_teamer", t('agent_defensive'), t('agent_defensive_for')),
-        ("bug_bounter", t('agent_bugbounty'), t('agent_bugbounty_for')),
-        ("dfir", t('agent_dfir'), t('agent_dfir_for')),
-        ("network_traffic_analyzer", t('agent_network'), t('agent_network_for')),
-        ("flag_discriminator", t('agent_flag'), t('agent_flag_for')),
-        ("codeagent", t('agent_code'), t('agent_code_for')),
-        ("thought", t('agent_thought'), t('agent_thought_for')),
+        ("one_tool_agent", "Basic CTF solver", "CTF challenges, Linux operations"),
+        ("red_teamer", "Offensive security", "Penetration testing, exploitation"),
+        ("blue_teamer", "Defensive security", "System defense, monitoring"),
+        ("bug_bounter", "Bug bounty hunter", "Web security, API testing"),
+        ("dfir", "Digital forensics", "Incident response, analysis"),
+        ("network_traffic_analyzer", "Network security", "Traffic analysis, monitoring"),
+        ("flag_discriminator", "CTF flag extraction", "Finding and validating flags"),
+        ("codeagent", "Code specialist", "Exploit development, analysis"),
+        ("thought", "Strategic planning", "High-level analysis, planning"),
     ]
     
     for agent, spec, best_for in agents:
@@ -364,42 +364,49 @@ def display_quick_guide(console: Console):
         (f"🎯 {t('guide_ctf_challenge')}", "bold yellow"), "\n",
         ("  1. CAI> /agent select redteam_agent", "green"), "\n",
         ("  2. CAI> /workspace set ctf_name", "green"), "\n",
-        (f"  3. CAI> {t('guide_describe_challenge')}", "green"), "\n\n",
-
+        ("  3. CAI> Describe the challenge...", "green"), "\n\n",
+        
         (f"🐛 {t('guide_bug_bounty')}", "bold yellow"), "\n",
         ("  1. CAI> /agent select bug_bounter_agent", "green"), "\n",
         ("  2. CAI> /model claude-3-7-sonnet", "green"), "\n",
-        (f"  3. CAI> {t('guide_test_url')}", "green"), "\n\n",
-
-        (t('guide_privacy_notice'), "yellow"), "\n\n",
-
+        ("  3. CAI> Test https://example.com", "green"), "\n\n",
+        
+        ("CAI collects pseudonymized data to improve our research.\n"
+         "Your privacy is protected in compliance with GDPR.\n"
+         "Continue to start, or press Ctrl-C to exit.", "yellow"), "\n\n",
+        
         (f"🔍 {t('guide_parallel_recon')}", "bold yellow"), "\n",
         ("  1. CAI> /parallel add red_teamer", "green"), "\n",
         ("  2. CAI> /parallel add network_traffic_analyzer", "green"), "\n",
         ("  3. CAI> Scan 192.168.1.0/24", "green"), "\n\n",
-
+        
         (f"🛠️ {t('guide_mcp_tools')}", "bold yellow"), "\n",
         ("  1. CAI> /mcp load sse http://localhost:3000", "green"), "\n",
         ("  2. CAI> /mcp add server_name agent_name", "green"), "\n",
         ("  3. CAI> Use the new tools...", "green"), "\n\n",
-
-        (t('guide_env_vars'), "bold yellow"), "\n",
+        
+        (f"{t('guide_env_vars')}", "bold yellow"), "\n",
         ("  CAI_MODEL", "green"), f" = {current_model}\n",
         ("  CAI_AGENT_TYPE", "green"), f" = {current_agent_type}\n",
         ("  CAI_PARALLEL", "green"), f" = {os.getenv('CAI_PARALLEL', '1')}\n",
-        ("  CAI_STREAM", "green"), f" = {os.getenv('CAI_STREAM', 'true')}\n",
-        ("  CAI_WORKSPACE", "green"), f" = {os.getenv('CAI_WORKSPACE', 'default')}\n\n",
+        ("  CAI_STREAM", "green"), f" = {os.getenv('CAI_STREAM', 'false')} (LLM)\n",
+        ("  CAI_TOOL_STREAM", "green"), f" = {os.getenv('CAI_TOOL_STREAM', 'true')} (Tools)\n",
+        ("  CAI_WORKSPACE", "green"), f" = {os.getenv('CAI_WORKSPACE', 'default')}\n",
+        ("  CAI_TEMPERATURE", "green"), f" = {os.getenv('CAI_TEMPERATURE', '0.7')}\n",
+        ("  CAI_TOP_P", "green"), f" = {os.getenv('CAI_TOP_P', '1.0')}\n\n",
         
         (f"💡 {t('guide_pro_tips')}", "bold yellow"), "\n",
-        (f"• {t('guide_pro_tip_help')}\n", "dim"),
-        (f"• {t('guide_pro_tip_quick')}\n", "dim"),
-        (f"• {t('guide_pro_tip_commands')}\n", "dim"),
-        (f"• {t('guide_pro_tip_shell')}\n", "dim"),
+        ("• Use /help for detailed command help\n", "dim"),
+        ("• Use /help quick for this guide\n", "dim"),
+        ("• Use /help commands for all commands\n", "dim"),
+        ("• Use $ prefix for quick shell: $ ls\n", "dim"),
     )
     
     # Create additional tips panels
     ollama_tip = Panel(
-        t('guide_ollama_desc'),
+        "To use Ollama models, configure OLLAMA_API_BASE\n"
+        "before startup.\n\n"
+        "Default: host.docker.internal:8000/v1",
         title=f"[bold yellow]{t('guide_ollama_title')}[/bold yellow]",
         border_style="yellow",
         padding=(1, 2),
@@ -408,24 +415,27 @@ def display_quick_guide(console: Console):
     
     # Simplified privacy notice
     privacy_notice = Text.assemble(
-        (t('guide_privacy_notice'), "yellow"), "\n\n",
+        ("CAI collects pseudonymized data to improve our research.\n"
+         "Your privacy is protected in compliance with GDPR.\n"
+         "Continue to start, or press Ctrl-C to exit.", "yellow"), "\n\n",
     )
     
     context_tip = Panel(
         Text.assemble(
-            (f"🔒 {t('guide_security_title')}\n\n", "bold white"),
-            f"{t('guide_alias1_desc')}\n",
-            ("alias1", "bold green"),
-            f"{t('guide_alias1_designed')}\n\n",
-            ("alias1", "bold green"),
-            f"{t('guide_alias1_outperforms')}\n",
-            f"• {t('guide_alias1_vuln')}\n",
-            f"• {t('guide_alias1_pentest')}\n",
-            f"• {t('guide_alias1_security')}\n",
-            f"• {t('guide_alias1_threat')}\n\n",
-            f"{t('guide_alias1_learn')}",
-            ("alias1", "bold green"),
-            f"{t('guide_alias1_privacy')}\n",
+            ("🔒 Security-Focused AI Framework\n\n", "bold white"),
+            "For optimal cybersecurity AI performance, use\n", 
+            ("alias1", "bold green"), 
+            " - specifically designed for cybersecurity\n"
+            "tasks with superior domain knowledge.\n\n",
+            ("alias1", "bold green"), 
+            " outperforms general-purpose models in:\n",
+            "• Vulnerability assessment\n",
+            "• Penetration testing and bug bounty\n",
+            "• Security analysis\n",
+            "• Threat detection\n\n",
+            "Learn more about ", 
+            ("alias1", "bold green"), 
+            " and its privacy-first approach:\n",
             ("https://news.aliasrobotics.com/alias1-a-privacy-first-cybersecurity-ai/", "blue underline")
         ),
         title=f"[bold yellow]🛡️ {t('guide_alias1_title')} [/bold yellow]",

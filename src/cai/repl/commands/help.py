@@ -15,16 +15,17 @@ except ImportError as exc:
         "The 'rich' package is required. Please install it with: pip install rich"
     ) from exc
 
-from cai.i18n import t
 from cai.repl.commands.base import COMMAND_ALIASES, COMMANDS, Command, register_command
 
 try:
     from caiextensions.platform.base.platform_manager import PlatformManager
+
     HAS_PLATFORM_EXTENSIONS = True
 except ImportError:
     HAS_PLATFORM_EXTENSIONS = False
 
 from cai import is_caiextensions_platform_available
+from cai.i18n import t
 
 console = Console()
 
@@ -49,7 +50,7 @@ def create_styled_table(
 
 
 def create_notes_panel(
-    notes: List[str], title: str = "Notes", border_style: str = "yellow"
+    notes: List[str], title: Optional[str] = None, border_style: str = "yellow"
 ) -> Panel:
     """Create a notes panel with consistent formatting.
 
@@ -61,6 +62,8 @@ def create_notes_panel(
     Returns:
         A configured Panel instance
     """
+    if title is None:
+        title = t('help_notes')
     notes_text = Text.from_markup("\n".join(f"• {note}" for note in notes))
     return Panel(notes_text, title=title, border_style=border_style)
 
@@ -72,7 +75,7 @@ class HelpCommand(Command):
         """Initialize the help command."""
         super().__init__(
             name="/help",
-            description=("Display help information about commands and features"),
+            description=(t('help_description_cmd')),
             aliases=["/h", "/?"],
         )
 
@@ -81,36 +84,46 @@ class HelpCommand(Command):
         self.add_subcommand("agent", "Display help for agent commands", self.handle_agent)
         self.add_subcommand("parallel", "Display help for parallel execution", self.handle_parallel)
         self.add_subcommand("run", "Display help for queued execution", self.handle_run)
-        
+
         # Memory & History
         self.add_subcommand("memory", "Display help for memory persistence", self.handle_memory)
         self.add_subcommand("history", "Display help for conversation history", self.handle_history)
-        self.add_subcommand("compact", "Display help for conversation compaction", self.handle_compact)
+        self.add_subcommand(
+            "compact", "Display help for conversation compaction", self.handle_compact
+        )
         self.add_subcommand("flush", "Display help for clearing histories", self.handle_flush)
         self.add_subcommand("load", "Display help for loading JSONL files", self.handle_load)
-        self.add_subcommand("merge", "Display help for merging agent histories", self.handle_merge_help)
-        
+        self.add_subcommand(
+            "merge", "Display help for merging agent histories", self.handle_merge_help
+        )
+
         # Environment & Config
         self.add_subcommand("config", "Display help for configuration", self.handle_config)
         self.add_subcommand("env", "Display help for environment variables", self.handle_env)
-        self.add_subcommand("workspace", "Display help for workspace management", self.handle_workspace)
-        self.add_subcommand("virtualization", "Display help for Docker containers", self.handle_virtualization)
-        
+        self.add_subcommand(
+            "workspace", "Display help for workspace management", self.handle_workspace
+        )
+        self.add_subcommand(
+            "virtualization", "Display help for Docker containers", self.handle_virtualization
+        )
+
         # Tools & Integration
         self.add_subcommand("mcp", "Display help for Model Context Protocol", self.handle_mcp)
         self.add_subcommand("platform", "Display help for platform commands", self.handle_platform)
         self.add_subcommand("shell", "Display help for shell commands", self.handle_shell)
-        
+
         # Utilities
         self.add_subcommand("model", "Display help for model selection", self.handle_model)
         self.add_subcommand("graph", "Display help for visualization", self.handle_graph)
         self.add_subcommand("aliases", "Display all command aliases", self.handle_aliases)
         self.add_subcommand("kill", "Display help for process management", self.handle_kill)
-        
+
         # General
         self.add_subcommand("commands", "List all available commands", self.handle_commands)
         self.add_subcommand("quick", "Quick reference guide", self.handle_quick)
-        self.add_subcommand("quickstart", "Show quickstart guide for new users", self.handle_quickstart)
+        self.add_subcommand(
+            "quickstart", "Show quickstart guide for new users", self.handle_quickstart
+        )
 
     def handle_memory(self, _: Optional[List[str]] = None) -> bool:
         """Show help for memory commands."""
@@ -128,31 +141,31 @@ class HelpCommand(Command):
         """Show help for agent management."""
         console.print(
             Panel(
-                "[bold]Agent Management Commands[/bold]\n\n"
-                "Agents are autonomous AI assistants specialized for different tasks.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/agent list[/yellow] - List all available agents\n"
-                "• [yellow]/agent select <name>[/yellow] - Switch to a specific agent\n"
-                "• [yellow]/agent info <name>[/yellow] - Show agent details and tools\n"
-                "• [yellow]/agent multi[/yellow] - Enable multi-agent mode\n"
-                "• [yellow]/agent current[/yellow] - Show current agent configuration\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/agent list[/green] - See all available agents\n"
-                "• [green]/agent select red_teamer[/green] - Switch to offensive security agent\n"
-                "• [green]/agent info bug_bounter[/green] - View bug bounty agent details\n"
-                "• [green]/a select 2[/green] - Select agent by number (using alias)\n\n"
-                "[bold]Available Agents:[/bold]\n"
-                "• [cyan]one_tool_agent[/cyan] - Basic CTF solver\n"
-                "• [cyan]red_teamer[/cyan] - Offensive security specialist\n"
-                "• [cyan]blue_teamer[/cyan] - Defensive security specialist\n"
-                "• [cyan]bug_bounter[/cyan] - Bug bounty hunter\n"
-                "• [cyan]dfir[/cyan] - Digital forensics & incident response\n"
-                "• [cyan]network_traffic_analyzer[/cyan] - Network analysis\n"
-                "• [cyan]flag_discriminator[/cyan] - CTF flag extraction\n"
-                "• [cyan]codeagent[/cyan] - Code generation and analysis\n"
-                "• [cyan]thought[/cyan] - Strategic planning\n\n"
+                f"[bold]{t('help_agent_header')}[/bold]\n\n"
+                f"{t('help_agent_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/agent list[/yellow] - {t('help_agent_list')}\n"
+                f"• [yellow]/agent select <name>[/yellow] - {t('help_agent_select')}\n"
+                f"• [yellow]/agent info <name>[/yellow] - {t('help_agent_info')}\n"
+                f"• [yellow]/agent multi[/yellow] - {t('help_agent_multi')}\n"
+                f"• [yellow]/agent current[/yellow] - {t('help_agent_current')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/agent list[/green] - {t('help_agent_ex_list')}\n"
+                f"• [green]/agent select red_teamer[/green] - {t('help_agent_ex_select')}\n"
+                f"• [green]/agent info bug_bounter[/green] - {t('help_agent_ex_info')}\n"
+                f"• [green]/a select 2[/green] - {t('help_agent_ex_num')}\n\n"
+                f"[bold]{t('help_agent_avail_agents')}[/bold]\n"
+                f"• [cyan]one_tool_agent[/cyan] - {t('help_agent_one_tool')}\n"
+                f"• [cyan]red_teamer[/cyan] - {t('help_agent_red')}\n"
+                f"• [cyan]blue_teamer[/cyan] - {t('help_agent_blue')}\n"
+                f"• [cyan]bug_bounter[/cyan] - {t('help_agent_bug')}\n"
+                f"• [cyan]dfir[/cyan] - {t('help_agent_dfir')}\n"
+                f"• [cyan]network_traffic_analyzer[/cyan] - {t('help_agent_network')}\n"
+                f"• [cyan]flag_discriminator[/cyan] - {t('help_agent_flag')}\n"
+                f"• [cyan]codeagent[/cyan] - {t('help_agent_code')}\n"
+                f"• [cyan]thought[/cyan] - {t('help_agent_thought')}\n\n"
                 "[dim]Alias: /a[/dim]",
-                title="Agent Commands",
+                title=t('help_agent_title'),
                 border_style="blue",
             )
         )
@@ -162,37 +175,37 @@ class HelpCommand(Command):
         """Show help for graph visualization."""
         console.print(
             Panel(
-                "[bold]Graph Visualization Commands[/bold]\n\n"
-                "Visualize agent conversation history with multi-agent support.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/graph[/yellow] - Show graph (single or all agents)\n"
-                "• [yellow]/graph P1[/yellow] - Show graph for agent by ID\n"
-                "• [yellow]/graph <agent_name>[/yellow] - Show graph for specific agent\n"
-                "• [yellow]/graph all[/yellow] - Show graphs for all agents\n"
-                "• [yellow]/graph timeline[/yellow] - Unified timeline of all agents\n"
-                "• [yellow]/graph stats[/yellow] - Detailed conversation statistics\n"
-                "• [yellow]/graph export <format>[/yellow] - Export data (json, dot, mermaid)\n\n"
-                "[bold cyan]Features:[/bold cyan]\n"
-                "• Multi-agent visualization in parallel mode\n"
-                "• User messages and agent responses\n"
-                "• Tool call highlighting\n"
-                "• Timeline view for chronological analysis\n"
-                "• Statistical insights across agents\n"
-                "• Export to multiple formats\n\n"
-                "[bold green]Examples:[/bold green]\n"
-                "• [green]/graph[/green] - Display current graph\n"
-                "• [green]/graph P2[/green] - Show graph for agent P2\n"
-                "• [green]/graph red_teamer[/green] - Show red_teamer's graph\n"
-                "• [green]/graph timeline[/green] - View timeline\n"
-                "• [green]/graph stats[/green] - See statistics\n"
-                "• [green]/graph export mermaid graph.md[/green] - Export Mermaid\n"
-                "• [green]/g timeline[/green] - Using alias\n\n"
-                "[bold]Export Formats:[/bold]\n"
-                "• [cyan]json[/cyan] - Complete conversation data\n"
-                "• [cyan]dot[/cyan] - Graphviz DOT format\n"
-                "• [cyan]mermaid[/cyan] - Mermaid diagram format\n\n"
+                f"[bold]{t('help_graph_header')}[/bold]\n\n"
+                f"{t('help_graph_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/graph[/yellow] - {t('help_graph_show')}\n"
+                f"• [yellow]/graph P1[/yellow] - {t('help_graph_by_id')}\n"
+                f"• [yellow]/graph <agent_name>[/yellow] - {t('help_graph_by_name')}\n"
+                f"• [yellow]/graph all[/yellow] - {t('help_graph_all')}\n"
+                f"• [yellow]/graph timeline[/yellow] - {t('help_graph_timeline')}\n"
+                f"• [yellow]/graph stats[/yellow] - {t('help_graph_stats')}\n"
+                f"• [yellow]/graph export <format>[/yellow] - {t('help_graph_export')}\n\n"
+                f"[bold cyan]{t('help_graph_features')}[/bold cyan]\n"
+                f"• {t('help_graph_feat_multi')}\n"
+                f"• {t('help_graph_feat_user')}\n"
+                f"• {t('help_graph_feat_tool')}\n"
+                f"• {t('help_graph_feat_timeline')}\n"
+                f"• {t('help_graph_feat_stats')}\n"
+                f"• {t('help_graph_feat_export')}\n\n"
+                f"[bold green]{t('help_examples')}:[/bold green]\n"
+                f"• [green]/graph[/green] - {t('help_graph_ex_display')}\n"
+                f"• [green]/graph P2[/green] - {t('help_graph_ex_p2')}\n"
+                f"• [green]/graph red_teamer[/green] - {t('help_graph_ex_red')}\n"
+                f"• [green]/graph timeline[/green] - {t('help_graph_ex_timeline')}\n"
+                f"• [green]/graph stats[/green] - {t('help_graph_ex_stats')}\n"
+                f"• [green]/graph export mermaid graph.md[/green] - {t('help_graph_ex_mermaid')}\n"
+                f"• [green]/g timeline[/green] - {t('help_graph_ex_alias')}\n\n"
+                f"[bold]{t('help_graph_export_formats')}[/bold]\n"
+                f"• [cyan]json[/cyan] - {t('help_graph_fmt_json')}\n"
+                f"• [cyan]dot[/cyan] - {t('help_graph_fmt_dot')}\n"
+                f"• [cyan]mermaid[/cyan] - {t('help_graph_fmt_mermaid')}\n\n"
                 "[dim]Alias: /g[/dim]",
-                title="Graph Commands",
+                title=t('help_graph_title'),
                 border_style="blue",
             )
         )
@@ -208,16 +221,15 @@ class HelpCommand(Command):
 
         console.print(
             Panel(
-                "Platform commands provide access to platform-specific "
-                "features.\n\n"
-                "[bold]Available Commands:[/bold]\n"
-                "• [yellow]/platform list[/yellow] - List available platforms\n"
-                "• [yellow]/platform <platform> <command>[/yellow] - Run "
-                "platform-specific command\n\n"
-                "[bold]Examples:[/bold]\n"
-                "• [green]/platform list[/green] - Show all available platforms\n"
-                "• [green]/p list[/green] - Shorthand for platform list",
-                title="Platform Commands",
+                f"{t('help_platform_cmds_desc')}\n\n"
+                f"[bold]{t('help_agent_avail_cmds')}[/bold]\n"
+                f"• [yellow]/platform list[/yellow] - {t('help_platform_list')}\n"
+                f"• [yellow]/platform <platform> <command>[/yellow] - "
+                f"{t('help_platform_run')}\n\n"
+                f"[bold]{t('help_examples')}:[/bold]\n"
+                f"• [green]/platform list[/green] - {t('help_platform_ex_list')}\n"
+                f"• [green]/p list[/green] - {t('help_platform_ex_short')}",
+                title=t('help_platform_cmds_title'),
                 border_style="blue",
             )
         )
@@ -227,21 +239,21 @@ class HelpCommand(Command):
         """Show help for shell command execution."""
         console.print(
             Panel(
-                "Shell commands allow you to execute system commands directly.\n\n"
-                "[bold]Available Commands:[/bold]\n"
-                "• [yellow]/shell <command>[/yellow] - Execute a shell command\n"
-                "• [yellow]/![/yellow] - Shorthand for /shell\n\n"
-                "[bold]Session Management:[/bold]\n"
-                "• [yellow]/shell session list[/yellow] - List active sessions\n"
-                "• [yellow]/shell session output <id>[/yellow] - Get output from "
-                "a session\n"
-                "• [yellow]/shell session kill <id>[/yellow] - Terminate a "
-                "session\n\n"
-                "[bold]Examples:[/bold]\n"
-                "• [green]/shell ls -la[/green] - List files in current "
-                "directory\n"
-                "• [green]/! pwd[/green] - Show current working directory",
-                title="Shell Commands",
+                f"{t('help_shell_desc')}\n\n"
+                f"[bold]{t('help_agent_avail_cmds')}[/bold]\n"
+                f"• [yellow]/shell <command>[/yellow] - {t('help_shell_exec')}\n"
+                f"• [yellow]/![/yellow] - {t('help_shell_shorthand')}\n\n"
+                f"[bold]{t('help_shell_session')}[/bold]\n"
+                f"• [yellow]/shell session list[/yellow] - {t('help_shell_session_list')}\n"
+                f"• [yellow]/shell session output <id>[/yellow] - "
+                f"{t('help_shell_session_output')}\n"
+                f"• [yellow]/shell session kill <id>[/yellow] - "
+                f"{t('help_shell_session_kill')}\n\n"
+                f"[bold]{t('help_examples')}:[/bold]\n"
+                f"• [green]/shell ls -la[/green] - "
+                f"{t('help_shell_ex_ls')}\n"
+                f"• [green]/! pwd[/green] - {t('help_shell_ex_pwd')}",
+                title=t('help_shell_title'),
                 border_style="blue",
             )
         )
@@ -251,28 +263,28 @@ class HelpCommand(Command):
         """Show help for environment variables."""
         console.print(
             Panel(
-                "Environment variables control CAI's behavior.\n\n"
-                "[bold]Key Variables:[/bold]\n"
-                "• [yellow]CAI_MODEL[/yellow] - Default AI model (e.g., "
-                "'claude-3-7-sonnet-20250219')\n"
-                "• [yellow]CAI_<AGENT>_MODEL[/yellow] - Agent-specific model "
-                "(e.g., CAI_REDTEAM_AGENT_MODEL)\n"
-                "• [yellow]CAI_MEMORY_DIR[/yellow] - Directory for storing memory "
-                "collections\n\n"
-                "[bold]API Keys:[/bold]\n"
-                "Set API keys as environment variables following the pattern:\n"
-                "• [yellow]PROVIDER_API_KEY[/yellow] - Where PROVIDER is your model provider\n\n"
-                "Examples:\n"
+                f"{t('help_env_desc')}\n\n"
+                f"[bold]{t('help_env_key_vars')}[/bold]\n"
+                f"• [yellow]CAI_MODEL[/yellow] - "
+                f"{t('help_env_model')}\n"
+                f"• [yellow]CAI_<AGENT>_MODEL[/yellow] - "
+                f"{t('help_env_agent_model')}\n"
+                f"• [yellow]CAI_MEMORY_DIR[/yellow] - "
+                f"{t('help_env_memory_dir')}\n\n"
+                f"[bold]{t('help_env_api_keys')}[/bold]\n"
+                f"{t('help_env_api_desc')}\n"
+                f"• [yellow]PROVIDER_API_KEY[/yellow] - {t('help_env_api_pattern')}\n\n"
+                f"{t('help_examples')}:\n"
                 "• [yellow]export OPENAI_API_KEY='your-key'[/yellow]\n"
                 "• [yellow]export ANTHROPIC_API_KEY='your-key'[/yellow]\n"
                 "• [yellow]export YOUR_PROVIDER_API_KEY='your-key'[/yellow]\n\n"
-                "[bold]Available Commands:[/bold]\n"
-                "• [yellow]/env list[/yellow] - Show all environment variables\n"
-                "• [yellow]/env set <n> <value>[/yellow] - Set an environment "
-                "variable\n"
-                "• [yellow]/env get <n>[/yellow] - Get the value of an "
-                "environment variable",
-                title="Environment Variables",
+                f"[bold]{t('help_agent_avail_cmds')}[/bold]\n"
+                f"• [yellow]/env list[/yellow] - {t('help_env_list')}\n"
+                f"• [yellow]/env set <n> <value>[/yellow] - "
+                f"{t('help_env_set')}\n"
+                f"• [yellow]/env get <n>[/yellow] - "
+                f"{t('help_env_get')}",
+                title=t('help_env_title'),
                 border_style="blue",
             )
         )
@@ -315,7 +327,7 @@ class HelpCommand(Command):
         """Print a table of commands with consistent formatting."""
         table = create_styled_table(
             title,
-            [("Command", command_style), ("Alias", "green"), ("Description", "white")],
+            [(t('help_col_command'), command_style), (t('help_col_alias'), "green"), (t('help_col_description'), "white")],
             header_style,
         )
 
@@ -333,51 +345,65 @@ class HelpCommand(Command):
         console.print(
             Panel(
                 Text.from_markup(
-                    "[bold]Welcome to CAI (Cybersecurity AI)[/bold]\n\n"
-                    "CAI is a powerful AI-driven security framework for penetration testing, "
-                    "bug bounty hunting, and security research.\n\n"
-                    "REMINDER: This is a work in progress. Please report any issues or feedback to the developer.\n"
-                    "[yellow]For detailed help on any topic, use:[/yellow] [bold]/help <topic>[/bold]\n"
-                    "[yellow]For a quick reference guide, use:[/yellow] [bold]/help quick[/bold]\n"
-                    "[yellow]To see all commands, use:[/yellow] [bold]/help commands[/bold]"
+                    f"[bold]{t('help_welcome')}[/bold]\n\n"
+                    f"{t('help_welcome_desc')}\n\n"
+                    f"{t('help_wip_notice')}\n"
+                    f"[yellow]{t('help_topic_hint')}[/yellow] [bold]/help <topic>[/bold]\n"
+                    f"[yellow]{t('help_quick_hint')}[/yellow] [bold]/help quick[/bold]\n"
+                    f"[yellow]{t('help_commands_hint')}[/yellow] [bold]/help commands[/bold]"
                 ),
-                title="🔒 CAI Help System",
+                title=f"🔒 {t('help_system_title')}",
                 border_style="yellow",
             )
         )
 
         # Command Categories
         categories = [
-            ("[bold yellow]Agent Management[/bold yellow]", [
-                ("[cyan]/agent[/cyan]", "Manage and switch between agents"),
-                ("[cyan]/parallel[/cyan]", "Configure parallel agent execution"),
-                ("[cyan]/run[/cyan]", "Queue prompts for execution"),
-            ]),
-            ("[bold green]Memory & History[/bold green]", [
-                ("[cyan]/memory[/cyan]", "Persistent memory management"),
-                ("[cyan]/history[/cyan]", "View conversation history"),
-                ("[cyan]/compact[/cyan]", "Compact conversations with AI"),
-                ("[cyan]/flush[/cyan]", "Clear agent histories"),
-                ("[cyan]/load[/cyan]", "Load JSONL conversation files"),
-                ("[cyan]/merge[/cyan]", "Merge agent histories"),
-            ]),
-            ("[bold blue]Environment & Config[/bold blue]", [
-                ("[cyan]/config[/cyan]", "Manage environment variables"),
-                ("[cyan]/env[/cyan]", "Display current environment"),
-                ("[cyan]/workspace[/cyan]", "Manage working directories"),
-                ("[cyan]/virtualization[/cyan]", "Docker container management"),
-            ]),
-            ("[bold magenta]Tools & Integration[/bold magenta]", [
-                ("[cyan]/mcp[/cyan]", "Model Context Protocol servers"),
-                ("[cyan]/platform[/cyan]", "Platform-specific features"),
-                ("[cyan]/shell[/cyan]", "Execute shell commands"),
-            ]),
-            ("[bold red]Utilities[/bold red]", [
-                ("[cyan]/model[/cyan]", "Change AI models"),
-                ("[cyan]/graph[/cyan]", "Visualize agent interactions"),
-                ("[cyan]/kill[/cyan]", "Terminate active processes"),
-                ("[cyan]/exit[/cyan]", "Exit CAI"),
-            ]),
+            (
+                f"[bold yellow]{t('help_cat_agent')}[/bold yellow]",
+                [
+                    ("[cyan]/agent[/cyan]", t('help_desc_agent')),
+                    ("[cyan]/parallel[/cyan]", t('help_desc_parallel')),
+                    ("[cyan]/run[/cyan]", t('help_desc_run')),
+                ],
+            ),
+            (
+                f"[bold green]{t('help_cat_memory')}[/bold green]",
+                [
+                    ("[cyan]/memory[/cyan]", t('help_desc_memory')),
+                    ("[cyan]/history[/cyan]", t('help_desc_history')),
+                    ("[cyan]/compact[/cyan]", t('help_desc_compact')),
+                    ("[cyan]/flush[/cyan]", t('help_desc_flush')),
+                    ("[cyan]/load[/cyan]", t('help_desc_load')),
+                    ("[cyan]/merge[/cyan]", t('help_desc_merge')),
+                ],
+            ),
+            (
+                f"[bold blue]{t('help_cat_env')}[/bold blue]",
+                [
+                    ("[cyan]/config[/cyan]", t('help_desc_config')),
+                    ("[cyan]/env[/cyan]", t('help_desc_env')),
+                    ("[cyan]/workspace[/cyan]", t('help_desc_workspace')),
+                    ("[cyan]/virtualization[/cyan]", t('help_desc_virtualization')),
+                ],
+            ),
+            (
+                f"[bold magenta]{t('help_cat_tools')}[/bold magenta]",
+                [
+                    ("[cyan]/mcp[/cyan]", t('help_desc_mcp')),
+                    ("[cyan]/platform[/cyan]", t('help_desc_platform')),
+                    ("[cyan]/shell[/cyan]", t('help_desc_shell')),
+                ],
+            ),
+            (
+                f"[bold red]{t('help_cat_utils')}[/bold red]",
+                [
+                    ("[cyan]/model[/cyan]", t('help_desc_model')),
+                    ("[cyan]/graph[/cyan]", t('help_desc_graph')),
+                    ("[cyan]/kill[/cyan]", t('help_desc_kill')),
+                    ("[cyan]/exit[/cyan]", t('help_desc_exit')),
+                ],
+            ),
         ]
 
         for category_name, commands in categories:
@@ -392,15 +418,15 @@ class HelpCommand(Command):
         # Quick Tips
         tips = Panel(
             Text.from_markup(
-                "[bold]Quick Tips:[/bold]\n"
-                "• Use [bold cyan]Tab[/bold cyan] for command completion\n"
-                "• Use [bold cyan]↑/↓[/bold cyan] to navigate command history\n"
-                "• Use [bold cyan]Ctrl+C[/bold cyan] to interrupt running commands\n"
-                "• Use [bold cyan]Ctrl+L[/bold cyan] to clear the screen\n"
-                "• Most commands have aliases (e.g., [yellow]/h[/yellow] for [yellow]/help[/yellow])\n"
-                "• Type [yellow]/help <command>[/yellow] for detailed command help"
+                f"[bold]{t('help_quick_tips')}[/bold]\n"
+                f"• {t('help_tip_tab')}\n"
+                f"• {t('help_tip_arrows')}\n"
+                f"• {t('help_tip_ctrlc')}\n"
+                f"• {t('help_tip_ctrll')}\n"
+                f"• {t('help_tip_aliases')}\n"
+                f"• {t('help_tip_detail')}"
             ),
-            title="💡 Tips",
+            title=f"💡 {t('help_tips')}",
             border_style="cyan",
         )
         console.print("\n")
@@ -411,12 +437,12 @@ class HelpCommand(Command):
     def handle_help_aliases(self) -> bool:
         """Show all command aliases in a well-formatted table."""
         # Create a styled header
-        console.print(Panel("Command Aliases Reference", border_style="magenta", title="Aliases"))
+        console.print(Panel(t('help_aliases_ref'), border_style="magenta", title=t('help_aliases')))
 
         # Create a table for aliases
         alias_table = create_styled_table(
-            "Command Aliases",
-            [("Alias", "green"), ("Command", "yellow"), ("Description", "white")],
+            t('help_aliases_title'),
+            [(t('help_col_alias'), "green"), (t('help_col_command'), "yellow"), (t('help_col_description'), "white")],
             "bold magenta",
         )
 
@@ -430,44 +456,44 @@ class HelpCommand(Command):
 
         # Add tips
         tips = [
-            "Aliases can be used anywhere the full command would be used",
-            ("Example: [green]/m list[/green] instead of [yellow]/memory list[/yellow]"),
+            t('help_aliases_tip_use'),
+            t('help_aliases_tip_example'),
         ]
         console.print("\n")
-        console.print(create_notes_panel(tips, "Tips", "cyan"))
+        console.print(create_notes_panel(tips, t('help_tips'), "cyan"))
 
         return True
 
     def handle_help_memory(self) -> bool:
         """Show help for memory commands with rich formatting."""
         # Create a styled header
-        header = Text("Memory Command Help", style="bold yellow")
+        header = Text(t('help_memory_title'), style="bold yellow")
         console.print(Panel(header, border_style="yellow"))
 
         # Usage table
         usage_table = create_styled_table(
-            "Usage", [("Command", "yellow"), ("Description", "white")]
+            t('help_usage'), [(t('help_col_command'), "yellow"), (t('help_col_description'), "white")]
         )
 
-        usage_table.add_row("/memory list", "Display all available memory collections")
-        usage_table.add_row("/memory load <collection>", "Set the active memory collection")
-        usage_table.add_row("/memory delete <collection>", "Delete a memory collection")
-        usage_table.add_row("/memory create <collection>", "Create a new memory collection")
-        usage_table.add_row("/m", "Alias for /memory")
+        usage_table.add_row("/memory list", t('help_memory_list'))
+        usage_table.add_row("/memory load <collection>", t('help_memory_load'))
+        usage_table.add_row("/memory delete <collection>", t('help_memory_delete'))
+        usage_table.add_row("/memory create <collection>", t('help_memory_create'))
+        usage_table.add_row("/m", t('help_memory_alias'))
 
         console.print(usage_table)
 
         # Examples table
         examples_table = create_styled_table(
-            "Examples", [("Example", "cyan"), ("Description", "white")], "bold cyan"
+            t('help_examples'), [(t('help_col_example'), "cyan"), (t('help_col_description'), "white")], "bold cyan"
         )
 
         examples = [
-            ("/memory list", "List all available collections"),
-            ("/memory load _all_", "Load the semantic memory collection"),
-            ("/memory load my_ctf", "Load the episodic memory for 'my_ctf'"),
-            ("/memory create new_collection", "Create a new collection named 'new_collection'"),
-            ("/memory delete old_collection", "Delete the collection named 'old_collection'"),
+            ("/memory list", t('help_memory_ex_list')),
+            ("/memory load _all_", t('help_memory_ex_load_all')),
+            ("/memory load my_ctf", t('help_memory_ex_load_ctf')),
+            ("/memory create new_collection", t('help_memory_ex_create')),
+            ("/memory delete old_collection", t('help_memory_ex_delete')),
         ]
 
         for example, desc in examples:
@@ -477,13 +503,13 @@ class HelpCommand(Command):
 
         # Collection types table
         types_table = create_styled_table(
-            "Collection Types", [("Type", "green"), ("Description", "white")], "bold green"
+            t('help_memory_coll_types'), [(t('help_col_type'), "green"), (t('help_col_description'), "white")], "bold green"
         )
 
         types = [
-            ("_all_", "Semantic memory across all CTFs"),
-            ("<CTF_NAME>", "Episodic memory for a specific CTF"),
-            ("<custom_name>", "Custom memory collection"),
+            ("_all_", t('help_memory_type_all')),
+            ("<CTF_NAME>", t('help_memory_type_ctf')),
+            ("<custom_name>", t('help_memory_type_custom')),
         ]
 
         for type_name, desc in types:
@@ -493,33 +519,33 @@ class HelpCommand(Command):
 
         # Notes panel
         notes = [
-            "Memory collections are stored in the Qdrant vector database",
-            "The active collection is stored in the CAI_MEMORY_COLLECTION env var",
-            "Episodic memory is used for specific CTFs or tasks",
-            "Semantic memory (_all_) is used across all CTFs",
-            "Memory is used to provide context to the agent",
+            t('help_memory_note_qdrant'),
+            t('help_memory_note_env'),
+            t('help_memory_note_episodic'),
+            t('help_memory_note_semantic'),
+            t('help_memory_note_context'),
         ]
 
-        console.print(create_notes_panel(notes))
+        console.print(create_notes_panel(notes, t('help_notes')))
 
         return True
 
     def handle_help_model(self) -> bool:
         """Show help for model command with rich formatting."""
         # Create a styled header
-        header = Text("Model Command Help", style="bold magenta")
+        header = Text(t('help_model_title'), style="bold magenta")
         console.print(Panel(header, border_style="magenta"))
 
         # Usage table
         usage_table = create_styled_table(
-            "Usage", [("Command", "magenta"), ("Description", "white")]
+            t('help_usage'), [(t('help_col_command'), "magenta"), (t('help_col_description'), "white")]
         )
 
         usage_commands = [
-            ("/model", "Display current model and list available models"),
-            ("/model <model_name>", "Change the model to <model_name>"),
-            ("/model <number>", "Change the model using its number from the list"),
-            ("/mod", "Alias for /model"),
+            ("/model", t('help_model_display')),
+            ("/model <model_name>", t('help_model_change_name')),
+            ("/model <number>", t('help_model_change_num')),
+            ("/mod", t('help_model_alias')),
         ]
 
         for cmd, desc in usage_commands:
@@ -529,14 +555,14 @@ class HelpCommand(Command):
 
         # Examples table
         examples_table = create_styled_table(
-            "Examples", [("Example", "cyan"), ("Description", "white")], "bold cyan"
+            t('help_examples'), [(t('help_col_example'), "cyan"), (t('help_col_description'), "white")], "bold cyan"
         )
 
         examples = [
-            ("/model 1", "Switch to the first model in the list (Claude 3.7 Sonnet)"),
-            ("/model claude-3-7-sonnet-20250219", "Switch to Claude 3.7 Sonnet model"),
-            ("/model o1", "Switch to OpenAI's O1 model (good for math)"),
-            ("/model gpt-4o", "Switch to OpenAI's GPT-4o model"),
+            ("/model 1", t('help_model_ex_1')),
+            ("/model claude-3-7-sonnet-20250219", t('help_model_ex_claude')),
+            ("/model o1", t('help_model_ex_o1')),
+            ("/model gpt-4o", t('help_model_ex_gpt4')),
         ]
 
         for example, desc in examples:
@@ -545,46 +571,46 @@ class HelpCommand(Command):
         console.print(examples_table)
 
         # Model information
-        console.print("\n[bold green]Model Information:[/bold green]\n")
-        console.print("CAI supports hundreds of models through various providers.")
-        console.print("Use [yellow]/model[/yellow] to see available models for your configured API keys.")
-        console.print("\nModel categories include:")
-        console.print("• Fast inference models for quick responses")
-        console.print("• Reasoning models for complex analysis")
-        console.print("• Code-specialized models for development")
-        console.print("• Local models via Ollama")
-        console.print("• Multi-provider access through aggregators")
+        console.print(f"\n[bold green]{t('help_model_info')}[/bold green]\n")
+        console.print(t('help_model_supports'))
+        console.print(t('help_model_see_avail'))
+        console.print(f"\n{t('help_model_categories')}")
+        console.print(f"• {t('help_model_cat_fast')}")
+        console.print(f"• {t('help_model_cat_reason')}")
+        console.print(f"• {t('help_model_cat_code')}")
+        console.print(f"• {t('help_model_cat_local')}")
+        console.print(f"• {t('help_model_cat_multi')}")
 
         # Notes panel
         notes = [
-            "The model change takes effect on the next agent interaction",
-            "The model is stored in the CAI_MODEL environment variable",
-            "Each provider requires its API key following the pattern: PROVIDER_API_KEY",
-            "Use /config to see which API keys are configured",
-            "Use /quickstart to check your API key setup",
-            "Local models via Ollama require local installation",
+            t('help_model_note_effect'),
+            t('help_model_note_env'),
+            t('help_model_note_api'),
+            t('help_model_note_config'),
+            t('help_model_note_quickstart'),
+            t('help_model_note_local'),
         ]
 
-        console.print(create_notes_panel(notes))
+        console.print(create_notes_panel(notes, t('help_notes')))
 
         return True
 
     def handle_help_turns(self) -> bool:
         """Show help for turns command with rich formatting."""
         # Create a styled header
-        header = Text("Turns Command Help", style="bold magenta")
+        header = Text(t('help_turns_title'), style="bold magenta")
         console.print(Panel(header, border_style="magenta"))
 
         # Usage table
         usage_table = create_styled_table(
-            "Usage", [("Command", "magenta"), ("Description", "white")]
+            t('help_usage'), [(t('help_col_command'), "magenta"), (t('help_col_description'), "white")]
         )
 
         usage_commands = [
-            ("/turns", "Display current maximum number of turns"),
-            ("/turns <number>", "Change the maximum number of turns"),
-            ("/turns inf", "Set unlimited turns"),
-            ("/t", "Alias for /turns"),
+            ("/turns", t('help_turns_display')),
+            ("/turns <number>", t('help_turns_change')),
+            ("/turns inf", t('help_turns_inf')),
+            ("/t", t('help_turns_alias')),
         ]
 
         for cmd, desc in usage_commands:
@@ -594,14 +620,14 @@ class HelpCommand(Command):
 
         # Examples table
         examples_table = create_styled_table(
-            "Examples", [("Example", "cyan"), ("Description", "white")], "bold cyan"
+            t('help_examples'), [(t('help_col_example'), "cyan"), (t('help_col_description'), "white")], "bold cyan"
         )
 
         examples = [
-            ("/turns", "Show current maximum turns"),
-            ("/turns 10", "Set maximum turns to 10"),
-            ("/turns inf", "Set unlimited turns"),
-            ("/t 5", "Set maximum turns to 5 (using alias)"),
+            ("/turns", t('help_turns_ex_show')),
+            ("/turns 10", t('help_turns_ex_10')),
+            ("/turns inf", t('help_turns_ex_inf')),
+            ("/t 5", t('help_turns_ex_alias')),
         ]
 
         for example, desc in examples:
@@ -611,13 +637,13 @@ class HelpCommand(Command):
 
         # Notes panel
         notes = [
-            ("The maximum turns limit controls how many responses the agent will give"),
-            "Setting turns to 'inf' allows unlimited responses",
-            ("The turns count is stored in the CAI_MAX_TURNS environment variable"),
-            "Each agent response counts as one turn",
+            t('help_turns_note_limit'),
+            t('help_turns_note_inf'),
+            t('help_turns_note_env'),
+            t('help_turns_note_count'),
         ]
 
-        console.print(create_notes_panel(notes))
+        console.print(create_notes_panel(notes, t('help_notes')))
 
         return True
 
@@ -630,12 +656,12 @@ class HelpCommand(Command):
                 platforms = platform_manager.list_platforms()
 
                 if not platforms:
-                    console.print("[yellow]No platforms registered.[/yellow]")
+                    console.print(f"[yellow]{t('help_platform_no_reg')}[/yellow]")
                     return True
 
                 platform_table = create_styled_table(
-                    "Available Platforms",
-                    [("Platform", "magenta"), ("Description", "white")],
+                    t('help_platform_title'),
+                    [(t('help_col_platform'), "magenta"), (t('help_col_description'), "white")],
                     "bold magenta",
                 )
 
@@ -652,24 +678,24 @@ class HelpCommand(Command):
                     platform = platform_manager.get_platform(platform_name)
                     commands = platform.get_commands()
                     if commands:
-                        command_example = f"[green]/platform {platform_name} {commands[0]}[/green] - Example {platform_name} command"
+                        command_example = f"[green]/platform {platform_name} {commands[0]}[/green] - {t('help_platform_ex_cmd').format(platform_name=platform_name)}"
                         examples.append(command_example)
 
                 if examples:
                     console.print(
                         Panel(
                             "\n".join(examples),
-                            title="Platform Command Examples",
+                            title=t('help_platform_examples'),
                             border_style="blue",
                         )
                     )
 
                 return True
             except (ImportError, Exception) as e:
-                console.print(f"[yellow]Error loading platforms: {e}[/yellow]")
+                console.print(f"[yellow]{t('help_platform_error').format(error=e)}[/yellow]")
                 return True
 
-        console.print("[yellow]No platform extensions available.[/yellow]")
+        console.print(f"[yellow]{t('help_platform_no_ext')}[/yellow]")
         return True
 
     def handle_help_config(self) -> bool:
@@ -680,41 +706,37 @@ class HelpCommand(Command):
         """
         console.print(
             Panel(
-                Text.from_markup(
-                    "The [bold yellow]/config[/bold yellow] command allows you "
-                    "to view and configure environment variables that control "
-                    "the behavior of CAI."
-                ),
-                title="Config Commands",
+                Text.from_markup(t('help_config_desc')),
+                title=t('help_config_title'),
                 border_style="yellow",
             )
         )
 
         # Create table for subcommands
         table = create_styled_table(
-            "Available Subcommands", [("Command", "yellow"), ("Description", "white")]
+            t('help_config_subcmds'), [(t('help_col_command'), "yellow"), (t('help_col_description'), "white")]
         )
 
-        table.add_row("/config", "List all environment variables and their current values")
-        table.add_row("/config list", "List all environment variables and their current values")
+        table.add_row("/config", t('help_config_list_desc'))
+        table.add_row("/config list", t('help_config_list_desc'))
         table.add_row(
-            "/config get <number>", "Get the value of a specific environment variable by its number"
+            "/config get <number>", t('help_config_get_desc')
         )
         table.add_row(
             "/config set <number> <value>",
-            "Set the value of a specific environment variable by its number",
+            t('help_config_set_desc'),
         )
 
         console.print(table)
 
         # Create notes panel
         notes = [
-            "Environment variables control various aspects of CAI behavior.",
-            "Changes environment variables only affect the current session.",
-            "Use the [yellow]/config list[/yellow] command to see options.",
-            "Each variable is assigned a number for easy reference.",
+            t('help_config_note_control'),
+            t('help_config_note_session'),
+            t('help_config_note_list'),
+            t('help_config_note_num'),
         ]
-        console.print(create_notes_panel(notes))
+        console.print(create_notes_panel(notes, t('help_notes')))
 
         return True
 
@@ -722,29 +744,29 @@ class HelpCommand(Command):
         """Show help for parallel execution."""
         console.print(
             Panel(
-                "[bold]Parallel Agent Execution[/bold]\n\n"
-                "Run multiple agents concurrently for collaborative problem-solving.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/parallel[/yellow] - Show current configuration\n"
-                "• [yellow]/parallel add <agent>[/yellow] - Add agent to parallel config\n"
-                "• [yellow]/parallel list[/yellow] - List configured agents\n"
-                "• [yellow]/parallel clear[/yellow] - Clear all configurations\n"
-                "• [yellow]/parallel remove <index>[/yellow] - Remove specific agent\n"
-                "• [yellow]/parallel override-models[/yellow] - Use global model for all\n"
-                "• [yellow]/parallel merge <indices>[/yellow] - Merge agent histories\n"
-                "• [yellow]/parallel prompt <index> <text>[/yellow] - Set custom prompt\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/parallel add red_teamer[/green] - Add red team agent\n"
-                "• [green]/parallel add bug_bounter custom_prompt=\"Find SQLi\"[/green]\n"
-                "• [green]/parallel merge 1,2[/green] - Merge histories of P1 and P2\n"
-                "• [green]/p list[/green] - Show all configured agents\n\n"
-                "[bold]Notes:[/bold]\n"
-                "• Agents run independently with isolated contexts\n"
-                "• Each agent gets a unique ID (P1, P2, etc.)\n"
-                "• Results are displayed side-by-side\n"
-                "• Use CAI_PARALLEL env var to set default count\n\n"
+                f"[bold]{t('help_parallel_header')}[/bold]\n\n"
+                f"{t('help_parallel_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/parallel[/yellow] - {t('help_parallel_show')}\n"
+                f"• [yellow]/parallel add <agent>[/yellow] - {t('help_parallel_add')}\n"
+                f"• [yellow]/parallel list[/yellow] - {t('help_parallel_list')}\n"
+                f"• [yellow]/parallel clear[/yellow] - {t('help_parallel_clear')}\n"
+                f"• [yellow]/parallel remove <index>[/yellow] - {t('help_parallel_remove')}\n"
+                f"• [yellow]/parallel override-models[/yellow] - {t('help_parallel_override')}\n"
+                f"• [yellow]/parallel merge <indices>[/yellow] - {t('help_parallel_merge')}\n"
+                f"• [yellow]/parallel prompt <index> <text>[/yellow] - {t('help_parallel_prompt')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/parallel add red_teamer[/green] - {t('help_parallel_ex_add')}\n"
+                '• [green]/parallel add bug_bounter custom_prompt="Find SQLi"[/green]\n'
+                f"• [green]/parallel merge 1,2[/green] - {t('help_parallel_ex_merge')}\n"
+                f"• [green]/p list[/green] - {t('help_parallel_ex_list')}\n\n"
+                f"[bold]{t('help_notes')}:[/bold]\n"
+                f"• {t('help_parallel_note_isolated')}\n"
+                f"• {t('help_parallel_note_id')}\n"
+                f"• {t('help_parallel_note_display')}\n"
+                f"• {t('help_parallel_note_env')}\n\n"
                 "[dim]Aliases: /par, /p[/dim]",
-                title="Parallel Execution",
+                title=t('help_parallel_title'),
                 border_style="blue",
             )
         )
@@ -754,24 +776,24 @@ class HelpCommand(Command):
         """Show help for queued execution."""
         console.print(
             Panel(
-                "[bold]Queued Prompt Execution[/bold]\n\n"
-                "Queue prompts for agents in parallel mode.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/run queue <agent_id> <prompt>[/yellow] - Queue a prompt\n"
-                "• [yellow]/run list[/yellow] - List all queued prompts\n"
-                "• [yellow]/run clear[/yellow] - Clear all queued prompts\n"
-                "• [yellow]/run remove <index>[/yellow] - Remove specific prompt\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/run queue P1 \"Scan port 80\"[/green] - Queue for agent P1\n"
-                "• [green]/run queue P2 \"Check for SQL injection\"[/green]\n"
-                "• [green]/run list[/green] - See all queued prompts\n"
-                "• [green]/r clear[/green] - Clear the queue\n\n"
-                "[bold]Notes:[/bold]\n"
-                "• Only available in parallel mode\n"
-                "• Prompts execute when you send a message\n"
-                "• Each agent processes its queue independently\n\n"
+                f"[bold]{t('help_run_header')}[/bold]\n\n"
+                f"{t('help_run_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/run queue <agent_id> <prompt>[/yellow] - {t('help_run_queue')}\n"
+                f"• [yellow]/run list[/yellow] - {t('help_run_list')}\n"
+                f"• [yellow]/run clear[/yellow] - {t('help_run_clear')}\n"
+                f"• [yellow]/run remove <index>[/yellow] - {t('help_run_remove')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f'• [green]/run queue P1 "Scan port 80"[/green] - {t("help_run_ex_queue")}\n'
+                '• [green]/run queue P2 "Check for SQL injection"[/green]\n'
+                f"• [green]/run list[/green] - {t('help_run_ex_list')}\n"
+                f"• [green]/r clear[/green] - {t('help_run_ex_clear')}\n\n"
+                f"[bold]{t('help_notes')}:[/bold]\n"
+                f"• {t('help_run_note_parallel')}\n"
+                f"• {t('help_run_note_execute')}\n"
+                f"• {t('help_run_note_independent')}\n\n"
                 "[dim]Alias: /r[/dim]",
-                title="Run Queue Commands",
+                title=t('help_run_title'),
                 border_style="green",
             )
         )
@@ -781,27 +803,27 @@ class HelpCommand(Command):
         """Show help for conversation history."""
         console.print(
             Panel(
-                "[bold]Conversation History Management[/bold]\n\n"
-                "View and manage agent conversation histories.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/history[/yellow] - Show control panel for all agents\n"
-                "• [yellow]/history all[/yellow] - Display all agent histories\n"
-                "• [yellow]/history <agent>[/yellow] - Show specific agent history\n"
-                "• [yellow]/history search <term>[/yellow] - Search in histories\n"
-                "• [yellow]/history <agent> <index>[/yellow] - Show specific message\n"
-                "• [yellow]/history export <file>[/yellow] - Export to JSON\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/history[/green] - View control panel\n"
-                "• [green]/history P1[/green] - Show P1's conversation\n"
-                "• [green]/history search \"password\"[/green] - Search for term\n"
-                "• [green]/his red_teamer 5[/green] - Show message #5\n\n"
-                "[bold]Features:[/bold]\n"
-                "• Token count and cost tracking\n"
-                "• Message role visualization\n"
-                "• Tool call details\n"
-                "• Export for analysis\n\n"
+                f"[bold]{t('help_history_header')}[/bold]\n\n"
+                f"{t('help_history_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/history[/yellow] - {t('help_history_show')}\n"
+                f"• [yellow]/history all[/yellow] - {t('help_history_all')}\n"
+                f"• [yellow]/history <agent>[/yellow] - {t('help_history_agent')}\n"
+                f"• [yellow]/history search <term>[/yellow] - {t('help_history_search')}\n"
+                f"• [yellow]/history <agent> <index>[/yellow] - {t('help_history_index')}\n"
+                f"• [yellow]/history export <file>[/yellow] - {t('help_history_export')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/history[/green] - {t('help_history_ex_panel')}\n"
+                f"• [green]/history P1[/green] - {t('help_history_ex_p1')}\n"
+                f'• [green]/history search "password"[/green] - {t("help_history_ex_search")}\n'
+                f"• [green]/his red_teamer 5[/green] - {t('help_history_ex_msg')}\n\n"
+                f"[bold]{t('help_history_features')}[/bold]\n"
+                f"• {t('help_history_feat_token')}\n"
+                f"• {t('help_history_feat_role')}\n"
+                f"• {t('help_history_feat_tool')}\n"
+                f"• {t('help_history_feat_export')}\n\n"
                 "[dim]Alias: /his[/dim]",
-                title="History Commands",
+                title=t('help_history_title'),
                 border_style="magenta",
             )
         )
@@ -811,25 +833,25 @@ class HelpCommand(Command):
         """Show help for conversation compaction."""
         console.print(
             Panel(
-                "[bold]Conversation Compaction[/bold]\n\n"
-                "Use AI to summarize and compact long conversations.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/compact[/yellow] - Compact current conversation\n"
-                "• [yellow]/compact model <name>[/yellow] - Set compaction model\n"
-                "• [yellow]/compact prompt <text>[/yellow] - Set custom prompt\n"
-                "• [yellow]/compact status[/yellow] - Show current settings\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/compact[/green] - Compact with default settings\n"
-                "• [green]/compact model o3-mini[/green] - Use O3 Mini model\n"
-                "• [green]/compact prompt \"Focus on vulnerabilities\"[/green]\n"
-                "• [green]/cmp status[/green] - Check configuration\n\n"
-                "[bold]Features:[/bold]\n"
-                "• Preserves important context\n"
-                "• Reduces token usage\n"
-                "• Saves to memory (M-prefixed)\n"
-                "• Clears history after compaction\n\n"
+                f"[bold]{t('help_compact_header')}[/bold]\n\n"
+                f"{t('help_compact_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/compact[/yellow] - {t('help_compact_run')}\n"
+                f"• [yellow]/compact model <name>[/yellow] - {t('help_compact_model')}\n"
+                f"• [yellow]/compact prompt <text>[/yellow] - {t('help_compact_prompt')}\n"
+                f"• [yellow]/compact status[/yellow] - {t('help_compact_status')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/compact[/green] - {t('help_compact_ex_default')}\n"
+                f"• [green]/compact model o3-mini[/green] - {t('help_compact_ex_model')}\n"
+                '• [green]/compact prompt "Focus on vulnerabilities"[/green]\n'
+                f"• [green]/cmp status[/green] - {t('help_compact_ex_status')}\n\n"
+                f"[bold]{t('help_graph_features')}[/bold]\n"
+                f"• {t('help_compact_feat_context')}\n"
+                f"• {t('help_compact_feat_token')}\n"
+                f"• {t('help_compact_feat_memory')}\n"
+                f"• {t('help_compact_feat_clear')}\n\n"
                 "[dim]Alias: /cmp[/dim]",
-                title="Compact Commands",
+                title=t('help_compact_title'),
                 border_style="yellow",
             )
         )
@@ -839,25 +861,25 @@ class HelpCommand(Command):
         """Show help for clearing histories."""
         console.print(
             Panel(
-                "[bold]Clear Conversation Histories[/bold]\n\n"
-                "Remove message histories and reset contexts.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/flush[/yellow] - Clear current agent's history\n"
-                "• [yellow]/flush all[/yellow] - Clear all agent histories\n"
-                "• [yellow]/flush <agent>[/yellow] - Clear specific agent\n"
-                "• [yellow]/flush P1[/yellow] - Clear parallel agent P1\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/flush[/green] - Clear active agent\n"
-                "• [green]/flush all[/green] - Reset all agents\n"
-                "• [green]/flush red_teamer[/green] - Clear red team agent\n"
-                "• [green]/clear P2[/green] - Clear parallel agent P2\n\n"
-                "[bold]Effects:[/bold]\n"
-                "• Removes all messages\n"
-                "• Resets token counts\n"
-                "• Preserves agent configuration\n"
-                "• Keeps MCP connections\n\n"
+                f"[bold]{t('help_flush_header')}[/bold]\n\n"
+                f"{t('help_flush_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/flush[/yellow] - {t('help_flush_current')}\n"
+                f"• [yellow]/flush all[/yellow] - {t('help_flush_all')}\n"
+                f"• [yellow]/flush <agent>[/yellow] - {t('help_flush_agent')}\n"
+                f"• [yellow]/flush P1[/yellow] - {t('help_flush_parallel')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/flush[/green] - {t('help_flush_ex_active')}\n"
+                f"• [green]/flush all[/green] - {t('help_flush_ex_all')}\n"
+                f"• [green]/flush red_teamer[/green] - {t('help_flush_ex_red')}\n"
+                f"• [green]/clear P2[/green] - {t('help_flush_ex_p2')}\n\n"
+                f"[bold]{t('help_flush_effects')}[/bold]\n"
+                f"• {t('help_flush_eff_messages')}\n"
+                f"• {t('help_flush_eff_tokens')}\n"
+                f"• {t('help_flush_eff_config')}\n"
+                f"• {t('help_flush_eff_mcp')}\n\n"
                 "[dim]Alias: /clear[/dim]",
-                title="Flush Commands",
+                title=t('help_flush_title'),
                 border_style="red",
             )
         )
@@ -867,24 +889,24 @@ class HelpCommand(Command):
         """Show help for loading JSONL files."""
         console.print(
             Panel(
-                "[bold]Load JSONL Conversation Files[/bold]\n\n"
-                "Import conversation histories from JSONL files.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/load <file>[/yellow] - Load for current agent\n"
-                "• [yellow]/load <file> agent <name>[/yellow] - Load for specific agent\n"
-                "• [yellow]/load <file> all[/yellow] - Distribute across all agents\n"
-                "• [yellow]/load <file> parallel[/yellow] - Smart parallel distribution\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/load session.jsonl[/green] - Load to current agent\n"
-                "• [green]/load ctf.jsonl agent red_teamer[/green] - Load to red team\n"
-                "• [green]/load scan.jsonl all[/green] - Split across agents\n"
-                "• [green]/l pentest.jsonl parallel[/green] - Pattern-based loading\n\n"
-                "[bold]Distribution Modes:[/bold]\n"
-                "• [cyan]agent[/cyan] - Load all to one agent\n"
-                "• [cyan]all[/cyan] - Round-robin distribution\n"
-                "• [cyan]parallel[/cyan] - Match by agent patterns\n\n"
+                f"[bold]{t('help_load_header')}[/bold]\n\n"
+                f"{t('help_load_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/load <file>[/yellow] - {t('help_load_current')}\n"
+                f"• [yellow]/load <file> agent <name>[/yellow] - {t('help_load_agent')}\n"
+                f"• [yellow]/load <file> all[/yellow] - {t('help_load_all')}\n"
+                f"• [yellow]/load <file> parallel[/yellow] - {t('help_load_parallel')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/load session.jsonl[/green] - {t('help_load_ex_current')}\n"
+                f"• [green]/load ctf.jsonl agent red_teamer[/green] - {t('help_load_ex_agent')}\n"
+                f"• [green]/load scan.jsonl all[/green] - {t('help_load_ex_all')}\n"
+                f"• [green]/l pentest.jsonl parallel[/green] - {t('help_load_ex_parallel')}\n\n"
+                f"[bold]{t('help_load_dist_modes')}[/bold]\n"
+                f"• [cyan]agent[/cyan] - {t('help_load_dist_agent')}\n"
+                f"• [cyan]all[/cyan] - {t('help_load_dist_all')}\n"
+                f"• [cyan]parallel[/cyan] - {t('help_load_dist_parallel')}\n\n"
                 "[dim]Alias: /l[/dim]",
-                title="Load Commands",
+                title=t('help_load_title'),
                 border_style="green",
             )
         )
@@ -894,26 +916,26 @@ class HelpCommand(Command):
         """Show help for workspace management."""
         console.print(
             Panel(
-                "[bold]Workspace Management[/bold]\n\n"
-                "Manage working directories and project spaces.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/workspace set <name>[/yellow] - Set workspace name\n"
-                "• [yellow]/workspace get[/yellow] - Show current workspace\n"
-                "• [yellow]/workspace ls[/yellow] - List workspace files\n"
-                "• [yellow]/workspace exec <cmd>[/yellow] - Execute in workspace\n"
-                "• [yellow]/workspace copy <src> <dst>[/yellow] - Copy files (container)\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/workspace set project1[/green] - Create project1 workspace\n"
-                "• [green]/workspace ls[/green] - List workspace contents\n"
-                "• [green]/ws exec make build[/green] - Run command in workspace\n"
-                "• [green]/ws copy /tmp/scan.txt .[/green] - Copy to workspace\n\n"
-                "[bold]Features:[/bold]\n"
-                "• Auto-creates directories\n"
-                "• Container-aware operations\n"
-                "• Integrates with logging\n"
-                "• Environment variable: CAI_WORKSPACE\n\n"
+                f"[bold]{t('help_workspace_header')}[/bold]\n\n"
+                f"{t('help_workspace_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/workspace set <name>[/yellow] - {t('help_workspace_set')}\n"
+                f"• [yellow]/workspace get[/yellow] - {t('help_workspace_get')}\n"
+                f"• [yellow]/workspace ls[/yellow] - {t('help_workspace_ls')}\n"
+                f"• [yellow]/workspace exec <cmd>[/yellow] - {t('help_workspace_exec')}\n"
+                f"• [yellow]/workspace copy <src> <dst>[/yellow] - {t('help_workspace_copy')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/workspace set project1[/green] - {t('help_workspace_ex_set')}\n"
+                f"• [green]/workspace ls[/green] - {t('help_workspace_ex_ls')}\n"
+                f"• [green]/ws exec make build[/green] - {t('help_workspace_ex_exec')}\n"
+                f"• [green]/ws copy /tmp/scan.txt .[/green] - {t('help_workspace_ex_copy')}\n\n"
+                f"[bold]{t('help_graph_features')}[/bold]\n"
+                f"• {t('help_workspace_feat_auto')}\n"
+                f"• {t('help_workspace_feat_container')}\n"
+                f"• {t('help_workspace_feat_logging')}\n"
+                f"• {t('help_workspace_feat_env')}\n\n"
                 "[dim]Alias: /ws[/dim]",
-                title="Workspace Commands",
+                title=t('help_workspace_title'),
                 border_style="cyan",
             )
         )
@@ -923,27 +945,26 @@ class HelpCommand(Command):
         """Show help for Docker container management."""
         console.print(
             Panel(
-                "[bold]Docker Container Management[/bold]\n\n"
-                "Run security tools in isolated Docker environments.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/virtualization pull <image>[/yellow] - Pull Docker image\n"
-                "• [yellow]/virtualization run <image>[/yellow] - Run container\n"
-                "• [yellow]/virtualization run <container_id>[/yellow] - Activate existing\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
-                "• [green]/virt pull kalilinux/kali-rolling[/green] - Pull Kali\n"
-                "• [green]/virt run parrotsec/security[/green] - Run Parrot OS\n"
-                "• [green]/virt run abc123[/green] - Activate container abc123\n\n"
-                "[bold]Supported Images:[/bold]\n"
+                f"[bold]{t('help_virt_header')}[/bold]\n\n"
+                f"{t('help_virt_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/virtualization pull <image>[/yellow] - {t('help_virt_pull')}\n"
+                f"• [yellow]/virtualization run <image>[/yellow] - {t('help_virt_run')}\n"
+                f"• [yellow]/virtualization run <container_id>[/yellow] - {t('help_virt_activate')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/virt pull kalilinux/kali-rolling[/green] - {t('help_virt_ex_pull')}\n"
+                f"• [green]/virt run parrotsec/security[/green] - {t('help_virt_ex_run')}\n"
+                f"• [green]/virt run abc123[/green] - {t('help_virt_ex_activate')}\n\n"
+                f"[bold]{t('help_virt_images')}[/bold]\n"
                 "• [cyan]kalilinux/kali-rolling[/cyan] - Kali Linux\n"
-                "• [cyan]parrotsec/security[/cyan] - Parrot Security\n"
-                "• [cyan]Any security-focused image[/cyan]\n\n"
-                "[bold]Features:[/bold]\n"
-                "• Host networking enabled\n"
-                "• Workspace mounting\n"
-                "• Interactive TTY\n"
-                "• Sets CAI_ACTIVE_CONTAINER\n\n"
+                "• [cyan]parrotsec/security[/cyan] - Parrot Security\n\n"
+                f"[bold]{t('help_graph_features')}[/bold]\n"
+                f"• {t('help_virt_feat_network')}\n"
+                f"• {t('help_virt_feat_mount')}\n"
+                f"• {t('help_virt_feat_tty')}\n"
+                f"• {t('help_virt_feat_env')}\n\n"
                 "[dim]Alias: /virt[/dim]",
-                title="Virtualization Commands",
+                title=t('help_virt_title'),
                 border_style="blue",
             )
         )
@@ -953,31 +974,31 @@ class HelpCommand(Command):
         """Show help for Model Context Protocol."""
         console.print(
             Panel(
-                "[bold]Model Context Protocol (MCP)[/bold]\n\n"
-                "Connect external tool servers to enhance agent capabilities.\n\n"
-                "[bold yellow]Available Commands:[/bold yellow]\n"
-                "• [yellow]/mcp load <type> <config>[/yellow] - Load MCP server\n"
-                "• [yellow]/mcp list[/yellow] - List active servers\n"
-                "• [yellow]/mcp add <server> <agent>[/yellow] - Add tools to agent\n"
-                "• [yellow]/mcp remove <server>[/yellow] - Remove server\n"
-                "• [yellow]/mcp tools <server>[/yellow] - List server tools\n"
-                "• [yellow]/mcp status[/yellow] - Check connection status\n"
-                "• [yellow]/mcp associations[/yellow] - Show agent mappings\n"
-                "• [yellow]/mcp test <server>[/yellow] - Test connectivity\n\n"
-                "[bold cyan]Server Types:[/bold cyan]\n"
-                "• [green]sse[/green] - Server-Sent Events (HTTP)\n"
-                "• [green]stdio[/green] - Standard I/O (Process)\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
+                f"[bold]{t('help_mcp_header')}[/bold]\n\n"
+                f"{t('help_mcp_desc')}\n\n"
+                f"[bold yellow]{t('help_agent_avail_cmds')}[/bold yellow]\n"
+                f"• [yellow]/mcp load <type> <config>[/yellow] - {t('help_mcp_load')}\n"
+                f"• [yellow]/mcp list[/yellow] - {t('help_mcp_list')}\n"
+                f"• [yellow]/mcp add <server> <agent>[/yellow] - {t('help_mcp_add')}\n"
+                f"• [yellow]/mcp remove <server>[/yellow] - {t('help_mcp_remove')}\n"
+                f"• [yellow]/mcp tools <server>[/yellow] - {t('help_mcp_tools')}\n"
+                f"• [yellow]/mcp status[/yellow] - {t('help_mcp_status')}\n"
+                f"• [yellow]/mcp associations[/yellow] - {t('help_mcp_assoc')}\n"
+                f"• [yellow]/mcp test <server>[/yellow] - {t('help_mcp_test')}\n\n"
+                f"[bold cyan]{t('help_mcp_server_types')}[/bold cyan]\n"
+                f"• [green]sse[/green] - {t('help_mcp_type_sse')}\n"
+                f"• [green]stdio[/green] - {t('help_mcp_type_stdio')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
                 "• [green]/mcp load sse http://localhost:3000[/green]\n"
-                "• [green]/mcp load stdio \"npx @modelcontextprotocol/server-sqlite\"[/green]\n"
+                '• [green]/mcp load stdio "npx @modelcontextprotocol/server-sqlite"[/green]\n'
                 "• [green]/mcp add filesystem red_teamer[/green]\n"
                 "• [green]/mcp tools filesystem[/green]\n\n"
-                "[bold]Notes:[/bold]\n"
-                "• Fresh connections per tool call\n"
-                "• Auto-discovery of tools\n"
-                "• Supports custom headers\n\n"
+                f"[bold]{t('help_notes')}:[/bold]\n"
+                f"• {t('help_mcp_note_fresh')}\n"
+                f"• {t('help_mcp_note_discovery')}\n"
+                f"• {t('help_mcp_note_headers')}\n\n"
                 "[dim]Alias: /m[/dim]",
-                title="MCP Commands",
+                title=t('help_mcp_title'),
                 border_style="magenta",
             )
         )
@@ -987,24 +1008,24 @@ class HelpCommand(Command):
         """Show help for process management."""
         console.print(
             Panel(
-                "[bold]Process Management[/bold]\n\n"
-                "Terminate active processes and clean up sessions.\n\n"
-                "[bold yellow]Usage:[/bold yellow]\n"
-                "• [yellow]/kill[/yellow] - Kill all active processes\n\n"
-                "[bold]What it terminates:[/bold]\n"
-                "• SSH sessions\n"
-                "• Container processes\n"
-                "• Background commands\n"
-                "• Hanging connections\n\n"
-                "[bold cyan]Example:[/bold cyan]\n"
-                "• [green]/kill[/green] - Clean up all processes\n"
-                "• [green]/k[/green] - Using the alias\n\n"
-                "[bold]Use when:[/bold]\n"
-                "• Commands are stuck\n"
-                "• Need to reset connections\n"
-                "• Before switching environments\n\n"
+                f"[bold]{t('help_kill_header')}[/bold]\n\n"
+                f"{t('help_kill_desc')}\n\n"
+                f"[bold yellow]{t('help_usage')}:[/bold yellow]\n"
+                f"• [yellow]/kill[/yellow] - {t('help_kill_all')}\n\n"
+                f"[bold]{t('help_kill_what')}[/bold]\n"
+                f"• {t('help_kill_ssh')}\n"
+                f"• {t('help_kill_container')}\n"
+                f"• {t('help_kill_bg')}\n"
+                f"• {t('help_kill_hanging')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
+                f"• [green]/kill[/green] - {t('help_kill_ex_clean')}\n"
+                f"• [green]/k[/green] - {t('help_kill_ex_alias')}\n\n"
+                f"[bold]{t('help_kill_when')}[/bold]\n"
+                f"• {t('help_kill_when_stuck')}\n"
+                f"• {t('help_kill_when_reset')}\n"
+                f"• {t('help_kill_when_switch')}\n\n"
                 "[dim]Alias: /k[/dim]",
-                title="Kill Command",
+                title=t('help_kill_title'),
                 border_style="red",
             )
         )
@@ -1014,8 +1035,8 @@ class HelpCommand(Command):
         """List all available commands."""
         console.print(
             Panel(
-                "[bold]All Available Commands[/bold]",
-                title="Command Reference",
+                f"[bold]{t('help_all_cmds')}[/bold]",
+                title=t('help_cmd_ref'),
                 border_style="yellow",
             )
         )
@@ -1023,56 +1044,78 @@ class HelpCommand(Command):
         # Create comprehensive command table
         all_commands = [
             # Agent Management
-            ("Agent Management", "yellow", [
-                ("/agent", "/a", "Manage and switch agents"),
-                ("/parallel", "/par, /p", "Configure parallel execution"),
-                ("/run", "/r", "Queue prompts for agents"),
-            ]),
+            (
+                t('help_cat_agent'),
+                "yellow",
+                [
+                    ("/agent", "/a", t('help_desc_agent')),
+                    ("/parallel", "/par, /p", t('help_desc_parallel_short')),
+                    ("/run", "/r", t('help_desc_run_short')),
+                ],
+            ),
             # Memory & History
-            ("Memory & History", "green", [
-                ("/memory", "/mem", "Persistent memory management"),
-                ("/history", "/his", "View conversation history"),
-                ("/compact", "/cmp", "Compact conversations"),
-                ("/flush", "/clear", "Clear histories"),
-                ("/load", "/l", "Load JSONL files"),
-                ("/merge", "/mrg", "Merge agent histories"),
-            ]),
+            (
+                t('help_cat_memory'),
+                "green",
+                [
+                    ("/memory", "/mem", t('help_desc_memory')),
+                    ("/history", "/his", t('help_desc_history')),
+                    ("/compact", "/cmp", t('help_desc_compact_short')),
+                    ("/flush", "/clear", t('help_desc_flush_short')),
+                    ("/load", "/l", t('help_desc_load_short')),
+                    ("/merge", "/mrg", t('help_desc_merge')),
+                ],
+            ),
             # Environment & Config
-            ("Environment & Config", "blue", [
-                ("/config", "/cfg", "Manage environment variables"),
-                ("/env", "/e", "Display environment"),
-                ("/workspace", "/ws", "Manage workspaces"),
-                ("/virtualization", "/virt", "Docker containers"),
-            ]),
+            (
+                t('help_cat_env'),
+                "blue",
+                [
+                    ("/config", "/cfg", t('help_desc_config_short')),
+                    ("/env", "/e", t('help_desc_env_short')),
+                    ("/workspace", "/ws", t('help_desc_workspace_short')),
+                    ("/virtualization", "/virt", t('help_desc_virtualization_short')),
+                ],
+            ),
             # Tools & Integration
-            ("Tools & Integration", "magenta", [
-                ("/mcp", "/m", "Model Context Protocol"),
-                ("/platform", "/p", "Platform features (conflicts with /parallel)"),
-                ("/shell", "/s, /$", "Execute shell commands"),
-            ]),
+            (
+                t('help_cat_tools'),
+                "magenta",
+                [
+                    ("/mcp", "/m", t('help_desc_mcp_short')),
+                    ("/platform", "/p", t('help_desc_platform_short')),
+                    ("/shell", "/s, /$", t('help_desc_shell_short')),
+                ],
+            ),
             # Utilities
-            ("Utilities", "cyan", [
-                ("/model", "/mod", "Change AI models"),
-                ("/graph", "/g", "Visualize interactions"),
-                ("/help", "/h, /?", "Show help"),
-                ("/kill", "/k", "Terminate processes"),
-                ("/exit", "/quit, /q", "Exit CAI"),
-            ]),
+            (
+                t('help_cat_utils'),
+                "cyan",
+                [
+                    ("/model", "/mod", t('help_desc_model_short')),
+                    ("/graph", "/g", t('help_desc_graph_short')),
+                    ("/help", "/h, /?", t('help_desc_help')),
+                    ("/kill", "/k", t('help_desc_kill_short')),
+                    ("/exit", "/quit, /q", t('help_desc_exit_short')),
+                ],
+            ),
         ]
 
         for category, color, commands in all_commands:
             console.print(f"\n[bold {color}]{category}[/bold {color}]")
             table = Table(show_header=True, header_style="bold")
-            table.add_column(t('help_command'), style="cyan")
-            table.add_column(t('help_aliases'), style="green")
-            table.add_column(t('help_description'), style="white")
-            
+            table.add_column(t('help_col_command'), style="cyan")
+            table.add_column(t('help_col_aliases'), style="green")
+            table.add_column(t('help_col_description'), style="white")
+
             for cmd, aliases, desc in commands:
                 table.add_row(cmd, aliases, desc)
-            
+
             console.print(table)
 
-        console.print(f"\n[dim]{t('help_detail_hint')}[/dim]")
+        console.print(
+            f"\n[dim]{t('help_detail_hint')}[/dim]"
+        )
         return True
 
     def handle_quick(self, _: Optional[List[str]] = None) -> bool:
@@ -1095,7 +1138,7 @@ class HelpCommand(Command):
             ("[cyan]/config[/cyan]", t('help_view_settings')),
             ("[cyan]/help <topic>[/cyan]", t('help_get_help')),
         ]
-        
+
         table = Table(show_header=False, box=None)
         table.add_column(width=35)
         table.add_column()
@@ -1104,40 +1147,49 @@ class HelpCommand(Command):
         console.print(table)
 
         # Common workflows
-        console.print("\n[bold green]Common Workflows:[/bold green]")
+        console.print(f"\n[bold green]{t('help_common_workflows')}[/bold green]")
         workflows = [
-            ("[bold]Start a CTF:[/bold]", [
-                "/agent select one_tool_agent",
-                "/workspace set ctf_name",
-                "Describe the challenge...",
-            ]),
-            ("[bold]Bug Bounty:[/bold]", [
-                "/agent select bug_bounter",
-                "/model claude-3-7-sonnet-20250219",
-                "Test https://example.com for vulnerabilities",
-            ]),
-            ("[bold]Parallel Recon:[/bold]", [
-                "/parallel add red_teamer",
-                "/parallel add network_traffic_analyzer",
-                "Scan 192.168.1.0/24",
-            ]),
+            (
+                f"[bold]{t('help_quick_start_ctf')}[/bold]",
+                [
+                    "/agent select one_tool_agent",
+                    "/workspace set ctf_name",
+                    t('help_quick_wf_describe'),
+                ],
+            ),
+            (
+                f"[bold]{t('help_quick_bug_bounty')}[/bold]",
+                [
+                    "/agent select bug_bounter",
+                    "/model claude-3-7-sonnet-20250219",
+                    t('help_quick_wf_test_vuln'),
+                ],
+            ),
+            (
+                f"[bold]{t('help_quick_parallel_recon')}[/bold]",
+                [
+                    "/parallel add red_teamer",
+                    "/parallel add network_traffic_analyzer",
+                    t('help_quick_wf_scan'),
+                ],
+            ),
         ]
-        
+
         for title, steps in workflows:
             console.print(f"\n  {title}")
             for step in steps:
                 console.print(f"    [green]→[/green] {step}")
 
         # Keyboard shortcuts
-        console.print("\n[bold blue]Keyboard Shortcuts:[/bold blue]")
+        console.print(f"\n[bold blue]{t('help_keyboard_shortcuts')}[/bold blue]")
         shortcuts = [
-            ("[cyan]Tab[/cyan]", "Auto-complete commands"),
-            ("[cyan]↑/↓[/cyan]", "Navigate history"),
-            ("[cyan]Ctrl+C[/cyan]", "Interrupt execution"),
-            ("[cyan]Ctrl+L[/cyan]", "Clear screen"),
-            ("[cyan]Ctrl+D[/cyan]", "Exit CAI"),
+            ("[cyan]Tab[/cyan]", t('help_quick_tab')),
+            ("[cyan]↑/↓[/cyan]", t('help_quick_arrows')),
+            ("[cyan]Ctrl+C[/cyan]", t('help_quick_ctrlc')),
+            ("[cyan]Ctrl+L[/cyan]", t('help_quick_ctrll')),
+            ("[cyan]Ctrl+D[/cyan]", t('help_quick_ctrld')),
         ]
-        
+
         table = Table(show_header=False, box=None)
         table.add_column(width=20)
         table.add_column()
@@ -1147,52 +1199,51 @@ class HelpCommand(Command):
 
         # Pro tips
         tips = [
-            "Most commands have short aliases (e.g., /a for /agent)",
-            "Use $ prefix for quick shell commands: $ ls",
-            "Set CAI_PARALLEL=3 to always run 3 agents",
-            "Check /mcp for external tool integration",
+            t('help_quick_pro_alias'),
+            t('help_quick_pro_shell'),
+            t('help_quick_pro_parallel'),
+            t('help_quick_pro_mcp'),
         ]
-        
+
         console.print("\n")
-        console.print(create_notes_panel(tips, "💡 Pro Tips", "cyan"))
-        
+        console.print(create_notes_panel(tips, f"💡 {t('help_pro_tips')}", "cyan"))
+
         return True
 
     def handle_merge_help(self, _: Optional[List[str]] = None) -> bool:
         """Show help for merge command."""
         console.print(
             Panel(
-                "[bold]Merge Agent Histories[/bold]\n\n"
-                "Combine message histories from multiple agents.\n\n"
-                "[bold yellow]Usage:[/bold yellow]\n"
-                "• [yellow]/merge <agents...> [options][/yellow] - Merge specified agents\n"
-                "• [yellow]/merge all [options][/yellow] - Merge all agent histories\n\n"
-                "[bold cyan]Default Behavior:[/bold cyan]\n"
-                "Without --target, all source agents receive the complete\n"
-                "merged history (with automatic duplicate control)\n\n"
-                "[bold cyan]Options:[/bold cyan]\n"
-                "• [green]--strategy <type>[/green] - Merge strategy\n"
-                "  • chronological (default) - Order by timestamp\n"
-                "  • by-agent - Group by agent\n"
-                "  • interleaved - Preserve conversation flow\n"
-                "• [green]--target <name>[/green] - Create new agent with merged history\n"
-                "• [green]--remove-sources[/green] - Remove source agents after merge\n\n"
-                "[bold cyan]Examples:[/bold cyan]\n"
+                f"[bold]{t('help_merge_header')}[/bold]\n\n"
+                f"{t('help_merge_desc')}\n\n"
+                f"[bold yellow]{t('help_usage')}:[/bold yellow]\n"
+                f"• [yellow]/merge <agents...> [options][/yellow] - {t('help_merge_usage_merge')}\n"
+                f"• [yellow]/merge all [options][/yellow] - {t('help_merge_usage_all')}\n\n"
+                f"[bold cyan]{t('help_merge_default')}[/bold cyan]\n"
+                f"{t('help_merge_default_desc')}\n\n"
+                f"[bold cyan]{t('help_options')}:[/bold cyan]\n"
+                f"• [green]--strategy <type>[/green] - {t('help_merge_strategy')}\n"
+                f"  • {t('help_merge_strat_chrono')}\n"
+                f"  • {t('help_merge_strat_agent')}\n"
+                f"  • {t('help_merge_strat_interleave')}\n"
+                f"• [green]--target <name>[/green] - {t('help_merge_target')}\n"
+                f"• [green]--remove-sources[/green] - {t('help_merge_remove')}\n\n"
+                f"[bold cyan]{t('help_examples')}:[/bold cyan]\n"
                 "• [green]/merge P1 P2[/green]\n"
-                "  → P1 gets P2's messages, P2 gets P1's messages\n"
+                f"  → {t('help_merge_ex_p1p2')}\n"
                 "• [green]/merge P1 P2 --target combined[/green]\n"
-                "  → Creates new 'combined' agent, P1 and P2 unchanged\n"
+                f"  → {t('help_merge_ex_target')}\n"
                 "• [green]/merge all[/green]\n"
-                "  → All agents get the complete combined history\n"
+                f"  → {t('help_merge_ex_all')}\n"
                 "• [green]/merge all --target unified --remove-sources[/green]\n"
-                "  → Creates 'unified' agent and removes all others\n\n"
-                "[bold]Notes:[/bold]\n"
-                "• Use agent IDs (P1, P2) or full names\n"
-                "• Agent names with spaces are auto-detected\n"
-                "• Duplicates are automatically filtered\n"
-                "• This is an alias for /parallel merge\n\n"
+                f"  → {t('help_merge_ex_unified')}\n\n"
+                f"[bold]{t('help_notes')}:[/bold]\n"
+                f"• {t('help_merge_note_ids')}\n"
+                f"• {t('help_merge_note_spaces')}\n"
+                f"• {t('help_merge_note_dups')}\n"
+                f"• {t('help_merge_note_alias')}\n\n"
                 "[dim]Alias: /mrg[/dim]",
-                title="Merge Command",
+                title=t('help_merge_title'),
                 border_style="green",
             )
         )
@@ -1201,6 +1252,7 @@ class HelpCommand(Command):
     def handle_quickstart(self, _: Optional[List[str]] = None) -> bool:
         """Show quickstart guide by calling the quickstart command."""
         from cai.repl.commands.base import handle_command
+
         return handle_command("/quickstart")
 
 

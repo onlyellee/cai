@@ -3,13 +3,15 @@ Flush command for CAI REPL.
 This module provides commands for clearing conversation history.
 """
 
+import inspect
 import os
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from rich.console import Console  # pylint: disable=import-error
 from rich.panel import Panel  # pylint: disable=import-error
 
 from cai.repl.commands.base import Command, register_command
+from cai.i18n import t
 
 console = Console()
 
@@ -21,13 +23,13 @@ class FlushCommand(Command):
         """Initialize the flush command."""
         super().__init__(
             name="/flush",
-            description="Clear conversation history (all agents by default, or specific agent)",
+            description=t('flush_desc'),
             aliases=["/clear"],
         )
 
         # Add subcommands
-        self.add_subcommand("all", "Clear history for all agents", self.handle_all)
-        self.add_subcommand("agent", "Clear history for a specific agent", self.handle_agent)
+        self.add_subcommand("all", t('flush_sub_all'), self.handle_all)
+        self.add_subcommand("agent", t('flush_sub_agent'), self.handle_agent)
 
     def handle(
         self, args: Optional[List[str]] = None, messages: Optional[List[Dict]] = None
@@ -41,20 +43,95 @@ class FlushCommand(Command):
         Returns:
             True if the command was handled successfully
         """
+        tui_context = None
+        if os.getenv("CAI_TUI_MODE") == "true":
+            tui_context = self._get_tui_context()
+            app, terminal_number, runner = tui_context
+
+            if runner and self._is_runner_busy(runner):
+                self._notify_runner_busy(runner)
+                return True
+
+        # In TUI mode without args, flush only the current terminal's agent
+        if not args and os.getenv("CAI_TUI_MODE") == "true":
+            return self.handle_current_terminal(context=tui_context)
+
         if not args:
-            # No arguments - flush all histories like "/flush all"
-            return self.handle_all([])
+            # No arguments in CLI mode - show help
+            return self.show_flush_help()
 
         # Check if first arg is "all" (special case)
         if args[0].lower() == "all":
             return self.handle_all(args[1:] if len(args) > 1 else [])
-        
+
         # Check if first arg is "agent" subcommand
         if args[0].lower() == "agent":
             return self.handle_agent(args[1:] if len(args) > 1 else [])
 
         # Otherwise treat it as an agent name
         return self.handle_specific_agent(args)
+
+    def handle_current_terminal(self, context: Optional[tuple] = None) -> bool:
+        """Clear history for the current terminal's agent in TUI mode."""
+        try:
+            app, terminal_number, runner = context or self._get_tui_context()
+
+            if not app:
+                console.print(f"[red]{t('flush_error_tui_init')}[/red]")
+                return False
+
+            if terminal_number is None or runner is None:
+                console.print(f"[red]{t('flush_error_no_terminal')}[/red]")
+                return False
+
+            if self._is_runner_busy(runner):
+                self._notify_runner_busy(runner)
+                return True
+
+            if not runner.agent:
+                console.print(f"[red]{t('flush_error_no_agent_in_terminal', num=terminal_number)}[/red]")
+                return False
+
+            agent = runner.agent
+            agent_name = getattr(agent, "name", runner.config.agent_name)
+
+            # Get history length before clearing
+            initial_length = 0
+            if hasattr(agent, 'model') and hasattr(agent.model, 'message_history'):
+                initial_length = len(agent.model.message_history)
+                # Clear the history
+                agent.model.message_history.clear()
+
+            # Display information
+            if initial_length > 0:
+                content = [
+                    t('flush_history_cleared', agent=agent_name, num=terminal_number),
+                    t('flush_removed_messages', count=initial_length),
+                ]
+
+                console.print(
+                    Panel(
+                        "\n".join(content),
+                        title=f"[bold cyan]{t('flush_panel_title_terminal', num=terminal_number)}[/bold cyan]",
+                        border_style="blue",
+                        padding=(1, 2),
+                    )
+                )
+            else:
+                console.print(
+                    Panel(
+                        t('flush_no_history_terminal', agent=agent_name, num=terminal_number),
+                        title=f"[bold cyan]{t('flush_panel_title_terminal', num=terminal_number)}[/bold cyan]",
+                        border_style="blue",
+                        padding=(1, 2),
+                    )
+                )
+
+            return True
+
+        except Exception as e:
+            console.print(f"[red]{t('flush_error_terminal_history', error=str(e))}[/red]")
+            return False
 
     def handle_current_agent(self) -> bool:
         """Clear history for the current agent."""
@@ -67,7 +144,7 @@ class FlushCommand(Command):
                 get_agent_message_history,
             )
         except ImportError:
-            console.print("[red]Error: Could not access conversation history[/red]")
+            console.print(f"[red]{t('flush_error_access_history')}[/red]")
             return False
 
         # Get initial length before clearing
@@ -80,14 +157,14 @@ class FlushCommand(Command):
         # Display information about the cleared messages
         if initial_length > 0:
             content = [
-                f"Conversation history cleared for {current_agent}.",
-                f"Removed {initial_length} messages.",
+                t('flush_history_cleared_agent', agent=current_agent),
+                t('flush_removed_messages', count=initial_length),
             ]
 
             console.print(
                 Panel(
                     "\n".join(content),
-                    title=f"[bold cyan]Context Flushed - {current_agent}[/bold cyan]",
+                    title=f"[bold cyan]{t('flush_panel_title_agent', agent=current_agent)}[/bold cyan]",
                     border_style="blue",
                     padding=(1, 2),
                 )
@@ -95,8 +172,8 @@ class FlushCommand(Command):
         else:
             console.print(
                 Panel(
-                    f"No conversation history to clear for {current_agent}.",
-                    title=f"[bold cyan]Context Flushed - {current_agent}[/bold cyan]",
+                    t('flush_no_history_agent', agent=current_agent),
+                    title=f"[bold cyan]{t('flush_panel_title_agent', agent=current_agent)}[/bold cyan]",
                     border_style="blue",
                     padding=(1, 2),
                 )
@@ -106,6 +183,58 @@ class FlushCommand(Command):
 
     def handle_all(self, args: Optional[List[str]] = None) -> bool:
         """Clear history for all agents."""
+        # In TUI mode, clear histories from all terminal runners
+        if os.getenv("CAI_TUI_MODE") == "true":
+            try:
+                app = self._get_tui_app()
+
+                if app and hasattr(app, 'session_manager') and app.session_manager.terminal_runners:
+                    agent_count = 0
+                    total_messages = 0
+
+                    for term_num, runner in app.session_manager.terminal_runners.items():
+                        if runner and runner.agent:
+                            agent = runner.agent
+                            if hasattr(agent, 'model') and hasattr(agent.model, 'message_history'):
+                                history_len = len(agent.model.message_history)
+                                if history_len > 0:
+                                    agent_count += 1
+                                    total_messages += history_len
+                                    # Clear the history
+                                    agent.model.message_history.clear()
+
+                    # Display information
+                    if agent_count > 0:
+                        content = [
+                            t('flush_all_terminal_cleared', count=agent_count),
+                            t('flush_all_terminal_total', count=total_messages),
+                        ]
+
+                        console.print(
+                            Panel(
+                                "\n".join(content),
+                                title=f"[bold cyan]{t('flush_all_terminal_title')}[/bold cyan]",
+                                border_style="blue",
+                                padding=(1, 2),
+                            )
+                        )
+                    else:
+                        console.print(
+                            Panel(
+                                t('flush_all_terminal_none'),
+                                title=f"[bold cyan]{t('flush_all_terminal_title')}[/bold cyan]",
+                                border_style="blue",
+                                padding=(1, 2),
+                            )
+                        )
+
+                    return True
+            except Exception as e:
+                console.print(f"[red]{t('flush_error_tui_histories', error=str(e))}[/red]")
+                # Fall back to standard method
+                pass
+
+        # Standard CLI mode or fallback
         try:
             from cai.sdk.agents.models.openai_chatcompletions import (
                 clear_all_histories,
@@ -113,7 +242,7 @@ class FlushCommand(Command):
                 ACTIVE_MODEL_INSTANCES,
             )
         except ImportError:
-            console.print("[red]Error: Could not access conversation history[/red]")
+            console.print(f"[red]{t('flush_error_access_history')}[/red]")
             return False
 
         # Get agent count and total messages before clearing
@@ -123,6 +252,7 @@ class FlushCommand(Command):
 
         # Also count parallel isolation histories
         from cai.sdk.agents.parallel_isolation import PARALLEL_ISOLATION
+
         if PARALLEL_ISOLATION.is_parallel_mode():
             for agent_id, history in PARALLEL_ISOLATION._isolated_histories.items():
                 if history:
@@ -131,27 +261,27 @@ class FlushCommand(Command):
 
         # Clear all histories from AGENT_MANAGER
         clear_all_histories()
-        
+
         # Clear parallel isolation histories
         PARALLEL_ISOLATION.clear_all_histories()
-        
+
         # Clear histories from all active model instances
         for key, model_ref in list(ACTIVE_MODEL_INSTANCES.items()):
             model = model_ref() if callable(model_ref) else model_ref
-            if model and hasattr(model, 'message_history'):
+            if model and hasattr(model, "message_history"):
                 model.message_history.clear()
 
         # Display information
         if agent_count > 0:
             content = [
-                f"Cleared history for all {agent_count} agents.",
-                f"Total messages removed: {total_messages}",
+                t('flush_all_cleared', count=agent_count),
+                t('flush_all_total', count=total_messages),
             ]
 
             console.print(
                 Panel(
                     "\n".join(content),
-                    title="[bold cyan]All Contexts Flushed[/bold cyan]",
+                    title=f"[bold cyan]{t('flush_all_title')}[/bold cyan]",
                     border_style="blue",
                     padding=(1, 2),
                 )
@@ -159,8 +289,8 @@ class FlushCommand(Command):
         else:
             console.print(
                 Panel(
-                    "No agent histories to clear.",
-                    title="[bold cyan]All Contexts Flushed[/bold cyan]",
+                    t('flush_all_none'),
+                    title=f"[bold cyan]{t('flush_all_title')}[/bold cyan]",
                     border_style="blue",
                     padding=(1, 2),
                 )
@@ -171,54 +301,54 @@ class FlushCommand(Command):
     def handle_agent(self, args: Optional[List[str]] = None) -> bool:
         """Clear history for a specific agent using 'agent' subcommand."""
         if not args:
-            console.print("[red]Error: Agent name required[/red]")
-            console.print("Usage: /flush agent <agent_name>")
+            console.print(f"[red]{t('flush_error_agent_name')}[/red]")
+            console.print(t('flush_usage_agent'))
             return False
 
         # Join all args to handle agent names with spaces
         agent_name = " ".join(args)
         return self._clear_agent(agent_name)
-    
+
     def handle_specific_agent(self, args: List[str]) -> bool:
         """Clear history for a specific agent (direct syntax)."""
         # Check if first arg is an ID
         identifier = args[0]
-        
+
         if identifier.upper().startswith("P") and len(identifier) >= 2 and identifier[1:].isdigit():
             # Clear by ID directly for parallel agents
             from cai.sdk.agents.parallel_isolation import PARALLEL_ISOLATION
             from cai.sdk.agents.models.openai_chatcompletions import ACTIVE_MODEL_INSTANCES
-            
+
             agent_id = identifier.upper()
-            
+
             # Get the history length before clearing
             initial_length = 0
             isolated_history = PARALLEL_ISOLATION.get_isolated_history(agent_id)
             if isolated_history:
                 initial_length = len(isolated_history)
-            
+
             # Clear from parallel isolation
             PARALLEL_ISOLATION.clear_agent_history(agent_id)
-            
+
             # Clear from any active model instances with this agent_id
             for key, model_ref in list(ACTIVE_MODEL_INSTANCES.items()):
                 if key[1] == agent_id:  # key is (agent_name, agent_id)
                     model = model_ref() if callable(model_ref) else model_ref
-                    if model and hasattr(model, 'message_history'):
+                    if model and hasattr(model, "message_history"):
                         model.message_history.clear()
-            
+
             # Get agent name for display
             agent_name = f"Agent {agent_id}"
             from cai.repl.commands.parallel import PARALLEL_CONFIGS
             from cai.agents import get_available_agents
-            
+
             available_agents = get_available_agents()
             for config in PARALLEL_CONFIGS:
                 if config.id and config.id == agent_id:
                     if config.agent_name in available_agents:
                         agent = available_agents[config.agent_name]
                         display_name = getattr(agent, "name", config.agent_name)
-                        
+
                         # Count instances to get the right name
                         instance_num = 0
                         for c in PARALLEL_CONFIGS:
@@ -226,25 +356,28 @@ class FlushCommand(Command):
                                 instance_num += 1
                                 if c.id == config.id:
                                     break
-                        
+
                         # Add instance number if there are duplicates
-                        if sum(1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name) > 1:
+                        if (
+                            sum(1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name)
+                            > 1
+                        ):
                             agent_name = f"{display_name} #{instance_num} [{agent_id}]"
                         else:
                             agent_name = f"{display_name} [{agent_id}]"
                         break
-            
+
             # Display information
             if initial_length > 0:
                 content = [
-                    f"Conversation history cleared for {agent_name}.",
-                    f"Removed {initial_length} messages.",
+                    t('flush_history_cleared_agent', agent=agent_name),
+                    t('flush_removed_messages', count=initial_length),
                 ]
 
                 console.print(
                     Panel(
                         "\n".join(content),
-                        title=f"[bold cyan]Context Flushed - {agent_name}[/bold cyan]",
+                        title=f"[bold cyan]{t('flush_panel_title_agent', agent=agent_name)}[/bold cyan]",
                         border_style="blue",
                         padding=(1, 2),
                     )
@@ -252,19 +385,19 @@ class FlushCommand(Command):
             else:
                 console.print(
                     Panel(
-                        f"No conversation history to clear for {agent_name}.",
-                        title=f"[bold cyan]Context Flushed - {agent_name}[/bold cyan]",
+                        t('flush_no_history_agent', agent=agent_name),
+                        title=f"[bold cyan]{t('flush_panel_title_agent', agent=agent_name)}[/bold cyan]",
                         border_style="blue",
                         padding=(1, 2),
                     )
                 )
-            
+
             return True
         else:
             # Join all args to handle agent names with spaces
             agent_name = " ".join(args)
             return self._clear_agent(agent_name)
-    
+
     def _clear_agent(self, agent_name: str) -> bool:
         """Common method to clear a specific agent's history."""
         try:
@@ -274,7 +407,7 @@ class FlushCommand(Command):
                 ACTIVE_MODEL_INSTANCES,
             )
         except ImportError:
-            console.print("[red]Error: Could not access conversation history[/red]")
+            console.print(f"[red]{t('flush_error_access_history')}[/red]")
             return False
 
         # Get initial length before clearing
@@ -283,35 +416,36 @@ class FlushCommand(Command):
 
         # Clear the history from AGENT_MANAGER
         clear_agent_history(agent_name)
-        
+
         # Also clear from parallel isolation if present
         from cai.sdk.agents.parallel_isolation import PARALLEL_ISOLATION
         from cai.repl.commands.parallel import PARALLEL_CONFIGS
-        
+
         # Find if this agent is in parallel configs and clear by ID
         cleared_from_parallel = False
         for idx, config in enumerate(PARALLEL_CONFIGS, 1):
             agent_id = config.id or f"P{idx}"
             # Check if the agent name matches
             from cai.agents import get_available_agents
+
             available = get_available_agents()
             if config.agent_name in available:
                 agent_obj = available[config.agent_name]
                 display_name = getattr(agent_obj, "name", config.agent_name)
-                
+
                 # Count instances to get correct numbering
                 instance_num = 0
                 for c in PARALLEL_CONFIGS[:idx]:
                     if c.agent_name == config.agent_name:
                         instance_num += 1
                 instance_num += 1  # Current instance
-                
+
                 # Build the instance name
                 if sum(1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name) > 1:
                     instance_name = f"{display_name} #{instance_num}"
                 else:
                     instance_name = display_name
-                
+
                 if agent_name == display_name or agent_name == instance_name:
                     # Clear from parallel isolation
                     isolated_history = PARALLEL_ISOLATION.get_isolated_history(agent_id)
@@ -319,12 +453,12 @@ class FlushCommand(Command):
                         initial_length = max(initial_length, len(isolated_history))
                     PARALLEL_ISOLATION.clear_agent_history(agent_id)
                     cleared_from_parallel = True
-                    
+
                     # Also clear from any active model instances with this agent_id
                     for key, model_ref in list(ACTIVE_MODEL_INSTANCES.items()):
                         if key[1] == agent_id:  # key is (agent_name, agent_id)
                             model = model_ref() if callable(model_ref) else model_ref
-                            if model and hasattr(model, 'message_history'):
+                            if model and hasattr(model, "message_history"):
                                 model.message_history.clear()
                     break
 
@@ -341,14 +475,14 @@ class FlushCommand(Command):
         # Display information
         if initial_length > 0:
             content = [
-                f"Conversation history cleared for {agent_name}.",
-                f"Removed {initial_length} messages.",
+                t('flush_history_cleared_agent', agent=agent_name),
+                t('flush_removed_messages', count=initial_length),
             ]
 
             console.print(
                 Panel(
                     "\n".join(content),
-                    title=f"[bold cyan]Context Flushed - {agent_name}[/bold cyan]",
+                    title=f"[bold cyan]{t('flush_panel_title_agent', agent=agent_name)}[/bold cyan]",
                     border_style="blue",
                     padding=(1, 2),
                 )
@@ -356,37 +490,131 @@ class FlushCommand(Command):
         else:
             console.print(
                 Panel(
-                    f"No conversation history to clear for {agent_name}.",
-                    title=f"[bold cyan]Context Flushed - {agent_name}[/bold cyan]",
+                    t('flush_no_history_agent', agent=agent_name),
+                    title=f"[bold cyan]{t('flush_panel_title_agent', agent=agent_name)}[/bold cyan]",
                     border_style="blue",
                     padding=(1, 2),
                 )
             )
 
         return True
-    
+
+    def _is_runner_busy(self, runner: Any) -> bool:
+        """Return True if the TUI runner is currently executing a task."""
+        if not runner:
+            return False
+
+        if getattr(runner, "is_running", False):
+            return True
+
+        current_task = getattr(runner, "current_task", None)
+        return bool(current_task and not current_task.done())
+
+    def _notify_runner_busy(self, runner: Any) -> None:
+        """Notify the user that the targeted terminal is busy."""
+        message = f"[yellow]{t('flush_runner_busy')}[/yellow]"
+
+        terminal = getattr(runner, "terminal", None)
+        if (
+            terminal
+            and hasattr(terminal, "write")
+            and os.getenv("CAI_BROADCAST_MODE") != "true"
+        ):
+            terminal.write(message)
+        else:
+            console.print(message)
+
+    def _detect_terminal_number_from_stack(self) -> Optional[int]:
+        """Best-effort detection of the command handler's terminal number."""
+        try:
+            for frame_info in inspect.stack():
+                owner = frame_info.frame.f_locals.get("self")
+                if (
+                    owner
+                    and hasattr(owner, "terminal_number")
+                    and hasattr(owner, "handle_command")
+                ):
+                    return int(owner.terminal_number)
+        except Exception:
+            return None
+
+        return None
+
+    def _get_tui_app(self) -> Optional[Any]:
+        """Return the active CAI Terminal application if available."""
+        try:
+            from cai.tui.cai_terminal import CAITerminal
+
+            app = getattr(CAITerminal, "_current_app", None) or getattr(
+                CAITerminal, "_instance", None
+            )
+            if app:
+                return app
+
+            try:
+                from textual.app import App
+
+                running = App.get_running()
+                if running and isinstance(running, CAITerminal):
+                    return running
+            except Exception:
+                return None
+        except Exception:
+            return None
+
+        return None
+
+    def _get_tui_context(self) -> Tuple[Optional[Any], Optional[int], Optional[Any]]:
+        """Gather the TUI app, terminal number, and runner for the current command."""
+        app = self._get_tui_app()
+        terminal_number = self._detect_terminal_number_from_stack()
+
+        if app and terminal_number is None:
+            try:
+                terminal_grid = getattr(app, "terminal_grid", None)
+                if terminal_grid and hasattr(terminal_grid, "get_focused_terminal"):
+                    focused = terminal_grid.get_focused_terminal()
+                    if focused and hasattr(focused, "terminal_number"):
+                        terminal_number = int(focused.terminal_number)
+            except Exception:
+                terminal_number = None
+
+        runner = None
+        if app and terminal_number is not None:
+            try:
+                session_manager = getattr(app, "session_manager", None)
+                if session_manager and getattr(session_manager, "terminal_runners", None):
+                    runner = session_manager.terminal_runners.get(int(terminal_number))
+            except Exception:
+                runner = None
+
+        return app, terminal_number, runner
+
     def show_flush_help(self) -> bool:
         """Show help menu with available agents to flush."""
         try:
             from cai.sdk.agents.models.openai_chatcompletions import get_all_agent_histories
         except ImportError:
-            console.print("[red]Error: Could not access conversation history[/red]")
+            console.print(f"[red]{t('flush_error_access_history')}[/red]")
             return False
-        
+
         all_histories = get_all_agent_histories()
-        
+
         # Also get parallel isolation histories
         from cai.sdk.agents.parallel_isolation import PARALLEL_ISOLATION
+
         parallel_histories = {}
         if PARALLEL_ISOLATION.is_parallel_mode():
             for agent_id, history in PARALLEL_ISOLATION._isolated_histories.items():
                 if history:
                     # Try to get agent name from PARALLEL_CONFIGS
                     from cai.repl.commands.parallel import PARALLEL_CONFIGS
+
                     agent_name = f"Unknown Agent {agent_id}"
                     for config in PARALLEL_CONFIGS:
                         if config.id == agent_id:
                             from cai.agents import get_available_agents
+
                             available = get_available_agents()
                             if config.agent_name in available:
                                 agent_obj = available[config.agent_name]
@@ -398,28 +626,35 @@ class FlushCommand(Command):
                                         instance_num += 1
                                         if c.id == config.id:
                                             break
-                                if sum(1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name) > 1:
+                                if (
+                                    sum(
+                                        1
+                                        for c in PARALLEL_CONFIGS
+                                        if c.agent_name == config.agent_name
+                                    )
+                                    > 1
+                                ):
                                     agent_name = f"{display_name} #{instance_num}"
                                 else:
                                     agent_name = display_name
                                 break
                     parallel_histories[f"{agent_name} [{agent_id}]"] = history
-        
+
         # Combine all histories
         combined_histories = dict(all_histories)
         combined_histories.update(parallel_histories)
-        
+
         if not combined_histories:
-            console.print("[yellow]No agents have conversation history to clear[/yellow]")
-            console.print("\n[dim]Usage:[/dim]")
-            console.print("[dim]  /flush <agent_name>  - Clear specific agent's history[/dim]")
-            console.print("[dim]  /flush all           - Clear all agents' histories[/dim]")
+            console.print(f"[yellow]{t('flush_no_agents_history')}[/yellow]")
+            console.print(f"\n[dim]{t('flush_usage_label')}[/dim]")
+            console.print(f"[dim]  {t('flush_usage_specific')}[/dim]")
+            console.print(f"[dim]  {t('flush_usage_all')}[/dim]")
             return True
-        
+
         # Get IDs for agents if available
         from cai.repl.commands.parallel import PARALLEL_CONFIGS
         from cai.agents import get_available_agents
-        
+
         agent_ids = {}
         if PARALLEL_CONFIGS:
             available_agents = get_available_agents()
@@ -427,63 +662,67 @@ class FlushCommand(Command):
                 if config.agent_name in available_agents:
                     agent = available_agents[config.agent_name]
                     display_name = getattr(agent, "name", config.agent_name)
-                    
+
                     # Count instances to get the right name
-                    total_count = sum(1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name)
+                    total_count = sum(
+                        1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name
+                    )
                     instance_num = 0
                     for c in PARALLEL_CONFIGS:
                         if c.agent_name == config.agent_name:
                             instance_num += 1
                             if c.id == config.id:
                                 break
-                    
+
                     # Add instance number if there are duplicates
                     if total_count > 1:
                         full_name = f"{display_name} #{instance_num}"
                     else:
                         full_name = display_name
-                    
+
                     agent_ids[full_name] = config.id
-        
+
         # Create a panel showing available agents
         from rich.tree import Tree
-        
-        tree = Tree(":wastebasket: [bold cyan]Flush Command - Available Agents[/bold cyan]")
-        
+
+        tree = Tree(f":wastebasket: [bold cyan]{t('flush_help_title')}[/bold cyan]")
+
         total_messages = 0
         for agent_name, history in sorted(combined_histories.items()):
             msg_count = len(history)
             total_messages += msg_count
-            
+
             # Get ID for this agent (if it's not already in the name)
             if "[P" in agent_name and agent_name.endswith("]"):
                 id_str = ""  # ID already in name
             else:
                 id_str = f" [{agent_ids.get(agent_name, '')}]" if agent_name in agent_ids else ""
-            
+
             # Add agent to tree
             if msg_count > 0:
-                tree.add(f":robot: [bold green]{agent_name}{id_str}[/bold green] ({msg_count} messages)")
+                tree.add(
+                    f":robot: [bold green]{agent_name}{id_str}[/bold green] ({msg_count} messages)"
+                )
             else:
                 tree.add(f":robot: [dim]{agent_name}{id_str}[/dim] (no messages)")
-        
+
         console.print(tree)
-        console.print(f"\n[bold]Total messages across all agents: {total_messages}[/bold]")
-        
-        console.print("\n[bold cyan]Usage:[/bold cyan]")
-        console.print("  /flush <agent_name>  - Clear specific agent's history")
-        console.print("  /flush <ID>          - Clear agent by ID (e.g., /flush P2)")
-        console.print("  /flush all           - Clear all agents' histories")
-        console.print("  /flush agent <name>  - Clear specific agent (explicit syntax)")
-        
+        console.print(f"\n[bold]{t('flush_total_messages', count=total_messages)}[/bold]")
+
+        console.print(f"\n[bold cyan]{t('flush_usage_title')}[/bold cyan]")
+        console.print(f"  {t('flush_usage_line1')}")
+        console.print(f"  {t('flush_usage_line2')}")
+        console.print(f"  {t('flush_usage_line3')}")
+        console.print(f"  {t('flush_usage_line4')}")
+
         # Show example for agents with spaces
         agents_with_spaces = [name for name in all_histories.keys() if " " in name]
         if agents_with_spaces:
-            console.print("\n[dim]Examples for agents with spaces:[/dim]")
+            console.print(f"\n[dim]{t('flush_examples_spaces')}[/dim]")
             for agent in agents_with_spaces[:2]:  # Show max 2 examples
                 id_str = f" (or /flush {agent_ids[agent]})" if agent in agent_ids else ""
-                console.print(f'[dim]  /flush {agent}{id_str}[/dim]')
-        
+                console.print(f"[dim]  /flush {agent}{id_str}[/dim]")
+
         return True
 
     def handle_no_args(self, messages: Optional[List[Dict]] = None) -> bool:

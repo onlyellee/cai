@@ -8,45 +8,134 @@ from typing import (
     Dict,
     List,
 )
+import importlib
 
-# Import all command modules
-# These imports will register the commands with the registry
-from cai.repl.commands import (  # pylint: disable=import-error,unused-import,line-too-long,redefined-builtin # noqa: E501,F401
-    agent,
-    compact,  # Add the compact command
-    config,
-    cost,  # Add the cost command
-    env,
-    exit,
-    flush,
-    graph,
-    help,
-    history,
-    kill,
-    load,
-    mcp,  # Add the MCP command
-    memory,  # Add the memory command
-    merge,  # Add the merge command (alias for /parallel merge)
-    model,
-    parallel,  # Add the new parallel command
-    platform,
-    quickstart,  # Add the quickstart command
-    run,  # Add the run command for parallel mode
-    shell,
-    virtualization,
-    workspace,
-)
+# Define command modules for lazy loading
+COMMAND_MODULES = [
+    'agent',
+    'api',
+    'auth',
+    'compact',
+    'config',
+    'context',
+    'continue',
+    'cost',
+    'council',
+    'ctr',  # Heavy module - will be loaded on demand
+    'env',
+    'exit',
+    'flush',
+    'graph',
+    'help',
+    'history',
+    'kill',
+    'load',
+    'mcp',
+    'memory',
+    'merge',
+    'meta_debug',
+    'model',
+    'parallel',
+    'platform',
+    'replay',
+    'queue',
+    'quickstart',
+    'resume',
+    'run',
+    'settings',
+    'shell',
+    'temperature',
+    'virtualization',
+    'workspace',
+]
+
+# Track which modules have been loaded
+_loaded_modules = set()
+
+def _ensure_command_loaded(module_name: str):
+    """Lazily load a command module if not already loaded."""
+    if module_name not in _loaded_modules:
+        try:
+            importlib.import_module(f'cai.repl.commands.{module_name}')
+            _loaded_modules.add(module_name)
+        except ImportError:
+            pass  # Module doesn't exist or has errors
+
+def _ensure_all_commands_loaded():
+    """Load all command modules (used for help, completions, etc.)."""
+    for module in COMMAND_MODULES:
+        _ensure_command_loaded(module)
 
 # Import base command structure
 from cai.repl.commands.base import (
     COMMAND_ALIASES,
     COMMANDS,
     Command,
-    get_command,
-    handle_command,
+    get_command as _base_get_command,
+    handle_command as _base_handle_command,
+    handle_command_with_autocorrect as _base_handle_command_with_autocorrect,
+    find_closest_command as _base_find_closest_command,
     register_command,
 )
-from cai.repl.commands.completer import FuzzyCommandCompleter
+
+# Lazy loading wrappers
+def get_command(name: str):
+    """Get a command by name with lazy loading support."""
+    # First try to get the command without loading everything
+    cmd = _base_get_command(name)
+    if cmd:
+        return cmd
+
+    # Command not found, try loading the specific module
+    # Check if name matches any known command module
+    name_clean = COMMAND_ALIASES.get(name, name).lstrip('/')
+    if name_clean in COMMAND_MODULES:
+        _ensure_command_loaded(name_clean)
+        return _base_get_command(name)
+
+    # Still not found, load all commands (for help/completions)
+    _ensure_all_commands_loaded()
+    return _base_get_command(name)
+
+def handle_command(command: str, args=None):
+    """Handle a command with lazy loading support."""
+    # Ensure the specific command is loaded
+    cmd_name = command.lstrip('/')
+    if cmd_name in COMMAND_MODULES:
+        _ensure_command_loaded(cmd_name)
+    return _base_handle_command(command, args)
+
+def handle_command_with_autocorrect(command: str, args=None, auto_correct=True):
+    """Handle a command with autocorrect and lazy loading support."""
+    # Try to load the specific command first
+    cmd_name = command.lstrip('/')
+    if cmd_name in COMMAND_MODULES:
+        _ensure_command_loaded(cmd_name)
+
+    # If not found, might need all commands for autocorrect
+    result = _base_handle_command_with_autocorrect(command, args, auto_correct)
+    if result[0] is False and result[1] is None:
+        # Command not found and no suggestion, load all to try autocorrect
+        _ensure_all_commands_loaded()
+        result = _base_handle_command_with_autocorrect(command, args, auto_correct)
+    return result
+
+def find_closest_command(command: str):
+    """Find closest command with lazy loading support."""
+    # Need all commands loaded for fuzzy matching
+    _ensure_all_commands_loaded()
+    return _base_find_closest_command(command)
+
+# Defer completer import for faster startup
+FuzzyCommandCompleter = None
+
+def get_fuzzy_completer():
+    """Get the fuzzy command completer with lazy loading."""
+    global FuzzyCommandCompleter
+    if FuzzyCommandCompleter is None:
+        from cai.repl.commands.completer import FuzzyCommandCompleter as _FuzzyCompleter
+        FuzzyCommandCompleter = _FuzzyCompleter
+    return FuzzyCommandCompleter
 
 # Define helper functions
 
@@ -57,6 +146,7 @@ def get_command_descriptions() -> Dict[str, str]:
     Returns:
         A dictionary mapping command names to descriptions
     """
+    _ensure_all_commands_loaded()  # Load all commands for complete list
     return {cmd.name: cmd.description for cmd in COMMANDS.values()}
 
 
@@ -66,6 +156,7 @@ def get_subcommand_descriptions() -> Dict[str, str]:
     Returns:
         A dictionary mapping command paths to descriptions
     """
+    _ensure_all_commands_loaded()  # Load all commands for complete list
     descriptions = {}
     for cmd in COMMANDS.values():
         for subcmd in cmd.get_subcommands():
@@ -80,6 +171,7 @@ def get_all_commands() -> Dict[str, List[str]]:
     Returns:
         A dictionary mapping command names to lists of subcommand names
     """
+    _ensure_all_commands_loaded()  # Load all commands for complete list
     return {cmd.name: cmd.get_subcommands() for cmd in COMMANDS.values()}
 
 
@@ -93,8 +185,11 @@ __all__ = [
     "register_command",
     "get_command",
     "handle_command",
+    "handle_command_with_autocorrect",
+    "find_closest_command",
     "get_command_descriptions",
     "get_subcommand_descriptions",
     "get_all_commands",
-    "FuzzyCommandCompleter",
+    "get_fuzzy_completer",
+    "FuzzyCommandCompleter",  # Will be None until loaded
 ]

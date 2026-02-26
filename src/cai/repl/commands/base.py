@@ -2,14 +2,10 @@
 Base module for CAI REPL commands.
 This module provides the base structure for all commands in the CAI REPL.
 """
-from typing import (
-    List,
-    Optional,
-    Dict,
-    Any,
-    Callable
-)
+
+from typing import List, Optional, Dict, Any, Callable, Tuple
 from rich.console import Console  # pylint: disable=import-error
+from difflib import get_close_matches
 
 console = Console()
 
@@ -38,10 +34,7 @@ class Command:
             description: A short description of the subcommand
             handler: The function to call when the subcommand is invoked
         """
-        self.subcommands[name] = {
-            "description": description,
-            "handler": handler
-        }
+        self.subcommands[name] = {"description": description, "handler": handler}
 
     def get_subcommands(self) -> List[str]:
         """Get a list of all subcommand names.
@@ -87,9 +80,8 @@ class Command:
         Returns:
             True if the command was handled successfully, False otherwise
         """
-        subcommands = ', '.join(self.get_subcommands())
-        console.print(
-            f"[yellow]{self.name} command requires a subcommand: {subcommands}[/yellow]")
+        subcommands = ", ".join(self.get_subcommands())
+        console.print(f"[yellow]{self.name} command requires a subcommand: {subcommands}[/yellow]")
         return False
 
     def handle_unknown_subcommand(self, subcommand: str) -> bool:
@@ -101,8 +93,7 @@ class Command:
         Returns:
             True if the command was handled successfully, False otherwise
         """
-        console.print(
-            f"[red]Unknown {self.name} subcommand: {subcommand}[/red]")
+        console.print(f"[red]Unknown {self.name} subcommand: {subcommand}[/red]")
         return False
 
 
@@ -139,6 +130,39 @@ def get_command(name: str) -> Optional[Command]:
     return COMMANDS.get(name)
 
 
+def find_closest_command(command: str) -> Optional[str]:
+    """Find the closest matching command for a mistyped command.
+    
+    Args:
+        command: The mistyped command
+        
+    Returns:
+        The closest matching command or None
+    """
+    # Remove leading slash if present
+    command_without_slash = command.lstrip("/")
+    
+    # Get all commands and aliases
+    all_commands = [cmd.lstrip("/") for cmd in COMMANDS.keys()]
+    all_commands.extend(list(COMMAND_ALIASES.keys()))
+    
+    # Find closest match
+    matches = get_close_matches(command_without_slash, all_commands, n=1, cutoff=0.6)
+    
+    if matches:
+        match = matches[0]
+        # Check if it's an alias
+        if match in COMMAND_ALIASES:
+            # Get the actual command and ensure single slash
+            actual_cmd = COMMAND_ALIASES[match]
+            return "/" + actual_cmd.lstrip("/")
+        else:
+            # Ensure single slash
+            return "/" + match.lstrip("/")
+    
+    return None
+
+
 def handle_command(command: str, args: Optional[List[str]] = None) -> bool:
     """Handle a command.
 
@@ -154,3 +178,29 @@ def handle_command(command: str, args: Optional[List[str]] = None) -> bool:
         return cmd.handle(args)
 
     return False
+
+
+def handle_command_with_autocorrect(command: str, args: Optional[List[str]] = None, auto_correct: bool = True) -> Tuple[bool, Optional[str]]:
+    """Handle a command with autocorrection support.
+
+    Args:
+        command: The command name or alias
+        args: Optional list of command arguments
+        auto_correct: Whether to auto-correct and execute mistyped commands
+
+    Returns:
+        Tuple of (command_handled, suggested_command)
+    """
+    cmd = get_command(command)
+    if cmd:
+        return (cmd.handle(args), None)
+    
+    # Command not found, try to find closest match
+    suggested = find_closest_command(command)
+    
+    if suggested and auto_correct:
+        cmd = get_command(suggested)
+        if cmd:
+            return (cmd.handle(args), suggested)
+    
+    return (False, suggested)

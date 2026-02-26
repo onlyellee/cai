@@ -2,11 +2,9 @@
 Environment command for CAI REPL.
 This module provides commands for displaying environment variables.
 """
+
 import os
-from typing import (
-    List,
-    Optional
-)
+from typing import List, Optional
 from rich.console import Console  # pylint: disable=import-error
 from rich.table import Table  # pylint: disable=import-error
 
@@ -24,7 +22,7 @@ class EnvCommand(Command):
         super().__init__(
             name="/env",
             description="Display environment variables and their values",
-            aliases=["/e"]
+            aliases=["/e"],
         )
 
     def handle(self, args: Optional[List[str]] = None) -> bool:
@@ -45,32 +43,26 @@ class EnvCommand(Command):
             bool: True if the command was executed successfully
         """
         # Get all environment variables
-        env_vars = {
-            k: v for k, v in os.environ.items() if k.startswith(
-                ('CAI_', 'CTF_'))}
+        env_vars = {k: v for k, v in os.environ.items() if k.startswith(("CAI_", "CTF_"))}
 
         if not env_vars:
-            console.print(
-                f"[yellow]{t('env_no_vars')}[/yellow]")
+            console.print("[yellow]No CAI_ or CTF_ environment variables found[/yellow]")
             return True
 
         # Create a table to display the variables
-        table = Table(
-            title=t('env_title'),
-            show_header=True,
-            header_style="bold magenta")
+        table = Table(title=t('env_title'), show_header=True, header_style="bold magenta")
         table.add_column("Variable", style="cyan")
         table.add_column("Value", style="green")
 
         # Add rows to the table with masked values for sensitive data
         for key, value in sorted(env_vars.items()):
             # Mask sensitive values (API keys, tokens, etc.)
-            if any(sensitive in key.lower()
-                   for sensitive in ['key', 'token', 'secret', 'password']):
+            if any(
+                sensitive in key.lower() for sensitive in ["key", "token", "secret", "password"]
+            ):
                 # Show first half of the value, mask the rest
                 half_length = len(value) // 2
-                masked_value = value[:half_length] + \
-                    '*' * (len(value) - half_length)
+                masked_value = value[:half_length] + "*" * (len(value) - half_length)
                 table.add_row(key, masked_value)
             else:
                 table.add_row(key, value)

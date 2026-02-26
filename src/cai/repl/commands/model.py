@@ -30,11 +30,13 @@ _GLOBAL_MODEL_NUMBERS = {}
 
 def get_predefined_model_categories() -> Dict[str, List[Dict[str, str]]]:
     """Get the predefined model categories as the single source of truth.
-    
+
     This function serves as the authoritative source for all available models
     across the CAI system. Other modules should import and use this function
     to ensure consistency.
-    
+
+    Updated December 2025 based on LiteLLM pricing data.
+
     Returns:
         Dictionary mapping category names to lists of model dictionaries
     """
@@ -45,61 +47,189 @@ def get_predefined_model_categories() -> Dict[str, List[Dict[str, str]]]:
                 "description": (
                     "Best model for Cybersecurity AI tasks"
                 )
-            },
-            {
-                "name": "alias1-fast",
-                "description": (
-                    "Fast version of alias1 for quick tasks"
-                )
             }
         ],
         "Anthropic Claude": [
             {
+                "name": "claude-opus-4-5-20251101",
+                "description": (
+                    "Most capable Claude model (200K ctx, $5/$25 per MTok)"
+                )
+            },
+            {
+                "name": "claude-sonnet-4-5-20250929",
+                "description": (
+                    "Latest Sonnet - excellent for coding and agents (200K ctx)"
+                )
+            },
+            {
                 "name": "claude-sonnet-4-20250514",
                 "description": (
-                    "Excellent balance of performance and efficiency"
+                    "Claude Sonnet 4 with 1M context window ($3/$15 per MTok)"
+                )
+            },
+            {
+                "name": "claude-opus-4-1-20250805",
+                "description": (
+                    "Opus 4.1 - agentic tasks and reasoning ($15/$75 per MTok)"
+                )
+            },
+            {
+                "name": "claude-haiku-4-5-20251001",
+                "description": (
+                    "Fast Haiku 4.5 - low latency (200K ctx, $1/$5 per MTok)"
                 )
             },
             {
                 "name": "claude-3-7-sonnet-20250219",
                 "description": (
-                    "Excellent model for complex reasoning and creative tasks"
+                    "Claude 3.7 Sonnet - complex reasoning (200K ctx)"
                 )
             },
             {
-                "name": "claude-3-5-sonnet-20240620",
+                "name": "claude-3-5-sonnet-20241022",
                 "description": (
-                    "Excellent balance of performance and efficiency"
+                    "Claude 3.5 Sonnet - balanced performance (200K ctx)"
                 )
             },
             {
-                "name": "claude-3-5-haiku-20240307",
+                "name": "claude-3-5-haiku-20241022",
                 "description": (
-                    "Fast and efficient model"
+                    "Claude 3.5 Haiku - fast and efficient ($0.80/$4 per MTok)"
                 )
             },
         ],
         "OpenAI": [
             {
-                "name": "o3-mini",
-                "description": "Latest mini model in the O-series"
+                "name": "gpt-5.2",
+                "description": (
+                    "Latest GPT-5.2 (400K ctx, $1.75/$14 per MTok)"
+                )
+            },
+            {
+                "name": "gpt-5",
+                "description": (
+                    "GPT-5 base model (272K ctx, $1.25/$10 per MTok)"
+                )
+            },
+            {
+                "name": "gpt-4.1",
+                "description": (
+                    "GPT-4.1 with 1M context window ($2/$8 per MTok)"
+                )
+            },
+            {
+                "name": "gpt-4.1-mini",
+                "description": (
+                    "GPT-4.1 Mini - cost efficient (1M ctx, $0.40/$1.60)"
+                )
             },
             {
                 "name": "gpt-4o",
                 "description": (
-                    "Latest GPT-4 model with improved capabilities"
+                    "GPT-4o multimodal (128K ctx, $2.50/$10 per MTok)"
+                )
+            },
+            {
+                "name": "gpt-4o-mini",
+                "description": (
+                    "GPT-4o Mini - very cheap (128K ctx, $0.15/$0.60)"
+                )
+            },
+            {
+                "name": "o3",
+                "description": (
+                    "O3 reasoning model (200K ctx, $2/$8 per MTok)"
+                )
+            },
+            {
+                "name": "o3-mini",
+                "description": (
+                    "O3 Mini reasoning (200K ctx, $1.10/$4.40 per MTok)"
+                )
+            },
+            {
+                "name": "o4-mini",
+                "description": (
+                    "O4 Mini reasoning (200K ctx, $1.10/$4.40 per MTok)"
+                )
+            },
+            {
+                "name": "o1",
+                "description": (
+                    "O1 reasoning model (200K ctx, $15/$60 per MTok)"
+                )
+            },
+        ],
+        "Google Gemini": [
+            {
+                "name": "gemini/gemini-2.5-pro",
+                "description": (
+                    "Gemini 2.5 Pro (1M ctx, $1.25/$10 per MTok)"
+                )
+            },
+            {
+                "name": "gemini/gemini-2.5-flash",
+                "description": (
+                    "Gemini 2.5 Flash - fast (1M ctx, $0.30/$2.50 per MTok)"
+                )
+            },
+            {
+                "name": "gemini/gemini-2.5-flash-lite",
+                "description": (
+                    "Gemini 2.5 Flash Lite (1M ctx, $0.10/$0.40 per MTok)"
+                )
+            },
+            {
+                "name": "gemini/gemini-2.0-flash",
+                "description": (
+                    "Gemini 2.0 Flash (1M ctx, $0.10/$0.40 per MTok)"
+                )
+            },
+            {
+                "name": "gemini/gemini-3-pro-preview",
+                "description": (
+                    "Gemini 3 Pro Preview (1M ctx, $2/$12 per MTok)"
+                )
+            },
+            {
+                "name": "gemini/gemini-3-flash-preview",
+                "description": (
+                    "Gemini 3 Flash Preview (1M ctx, $0.50/$3 per MTok)"
                 )
             },
         ],
         "DeepSeek": [
             {
-                "name": "deepseek-v3",
-                "description": "DeepSeek's latest general-purpose model"
+                "name": "deepseek/deepseek-v3.2",
+                "description": (
+                    "DeepSeek V3.2 latest (164K ctx, $0.28/$0.40 per MTok)"
+                )
             },
             {
-                "name": "deepseek-r1",
-                "description": "DeepSeek's specialized reasoning model"
-            }
+                "name": "deepseek/deepseek-v3",
+                "description": (
+                    "DeepSeek V3 general-purpose (128K ctx, $0.27/$1.10)"
+                )
+            },
+            {
+                "name": "deepseek/deepseek-r1",
+                "description": (
+                    "DeepSeek R1 reasoning (128K ctx, $0.55/$2.19 per MTok)"
+                )
+            },
+            {
+                "name": "deepseek-chat",
+                "description": (
+                    "DeepSeek Chat API (131K ctx, $0.60/$1.70 per MTok)"
+                )
+            },
+            {
+                "name": "deepseek-reasoner",
+                "description": (
+                    "DeepSeek Reasoner API (131K ctx, $0.60/$1.70 per MTok)"
+                )
+            },
         ],
         "Ollama Cloud": [
             {
@@ -300,7 +430,7 @@ class ModelCommand(Command):
             model_info = os.getenv("CAI_MODEL", "Unknown")
             console.print(
                 Panel(
-                    t('model_changed_to', model=f'[bold green]{model_info}[/bold green]'),
+                    f"{t('model_current')} [bold green]{model_info}[/bold green]",
                     border_style="green",
                     title=t('model_active_title')
                 )
@@ -311,30 +441,30 @@ class ModelCommand(Command):
                 title=t('model_available'),
                 show_header=True,
                 header_style="bold yellow")
-            model_table.add_column("#", style="bold white", justify="right")
-            model_table.add_column("Model", style="cyan")
-            model_table.add_column("Provider", style="magenta")
-            model_table.add_column("Category", style="blue")
+            model_table.add_column(t('model_col_number'), style="bold white", justify="right")
+            model_table.add_column(t('model_col_model'), style="cyan")
+            model_table.add_column(t('model_col_provider'), style="magenta")
+            model_table.add_column(t('model_col_category'), style="blue")
             model_table.add_column(
-                "Input Cost ($/M)",
+                t('model_col_input_cost'),
                 style="green",
                 justify="right")
             model_table.add_column(
-                "Output Cost ($/M)",
+                t('model_col_output_cost'),
                 style="red",
                 justify="right")
-            model_table.add_column("Description", style="white")
+            model_table.add_column(t('model_col_description'), style="white")
 
             # Add predefined models with numbers
             for i, model in enumerate(ALL_MODELS, 1):
                 # Format pricing info as dollars per million tokens
                 input_cost_str = (
                     f"${model['input_cost']:.2f}"
-                    if model['input_cost'] is not None else "Unknown"
+                    if model['input_cost'] is not None else t('model_unknown')
                 )
                 output_cost_str = (
                     f"${model['output_cost']:.2f}"
-                    if model['output_cost'] is not None else "Unknown"
+                    if model['output_cost'] is not None else t('model_unknown')
                 )
 
                 model_table.add_row(
@@ -362,17 +492,17 @@ class ModelCommand(Command):
                             size_gb = size_mb / 1024
                             size_str = f"{size_gb:.1f} GB"
                     
-                    model_description = "Local model"
+                    model_description = t('model_local')
                     if size_str:
                         model_description += f" ({size_str})"
-                    
+
                     model_table.add_row(
                         str(i),
                         model_name,
                         "Ollama",
                         "Local",
-                        "Free",
-                        "Free",
+                        t('model_free'),
+                        t('model_free'),
                         model_description
                     )
             else:  # pylint: disable=broad-except
@@ -383,22 +513,22 @@ class ModelCommand(Command):
                     "llama3",
                     "Ollama",
                     "Local",
-                    "Free",
-                    "Free",
+                    t('model_free'),
+                    t('model_free'),
                     "Local Llama 3 model (if installed)")
                 model_table.add_row(str(start_index + 1),
                                     "mistral",
                                     "Ollama",
                                     "Local",
-                                    "Free",
-                                    "Free",
+                                    t('model_free'),
+                                    t('model_free'),
                                     "Local Mistral model (if installed)")
                 model_table.add_row(str(start_index + 2),
                                     "...",
                                     "Ollama",
                                     "Local",
-                                    "Free",
-                                    "Free",
+                                    t('model_free'),
+                                    t('model_free'),
                                     "Other local models (if installed)")
 
             console.print(model_table)
@@ -492,11 +622,9 @@ class ModelShowCommand(Command):
                 response = requests.get(LITELLM_URL, timeout=5)
 
                 if response.status_code != 200:
-                    error_msg = (
-                        f"[red]Error fetching model data: "
-                        f"HTTP {response.status_code}[/red]"
+                    console.print(
+                        f"[red]{t('model_show_fetch_error', status=response.status_code)}[/red]"
                     )
-                    console.print(error_msg)
                     return True
 
                 model_data = response.json()
@@ -506,26 +634,26 @@ class ModelShowCommand(Command):
             if show_only_supported:
                 title = t('model_show_supported_title')
             if search_term:
-                title += f" - '{search_term}'"
+                title += t('model_search_suffix', term=search_term)
 
             model_table = Table(
                 title=title,
                 show_header=True,
                 header_style="bold yellow"
             )
-            model_table.add_column("#", style="bold white", justify="right")
-            model_table.add_column("Model", style="cyan")
-            model_table.add_column("Provider", style="magenta")
-            model_table.add_column("Max Tokens", style="blue", justify="right")
+            model_table.add_column(t('model_col_number'), style="bold white", justify="right")
+            model_table.add_column(t('model_col_model'), style="cyan")
+            model_table.add_column(t('model_col_provider'), style="magenta")
+            model_table.add_column(t('model_col_max_tokens'), style="blue", justify="right")
             model_table.add_column(
-                "Input Cost ($/M)",
+                t('model_col_input_cost'),
                 style="green",
                 justify="right")
             model_table.add_column(
-                "Output Cost ($/M)",
+                t('model_col_output_cost'),
                 style="red",
                 justify="right")
-            model_table.add_column("Features", style="white")
+            model_table.add_column(t('model_col_features'), style="white")
 
             # Count models for summary
             total_models = 0
@@ -552,11 +680,11 @@ class ModelShowCommand(Command):
                 # Format pricing info
                 input_cost_str = (
                     f"${model['input_cost']:.2f}"
-                    if model['input_cost'] is not None else "Unknown"
+                    if model['input_cost'] is not None else t('model_unknown')
                 )
                 output_cost_str = (
                     f"${model['output_cost']:.2f}"
-                    if model['output_cost'] is not None else "Unknown"
+                    if model['output_cost'] is not None else t('model_unknown')
                 )
                 
                 # Add row to table
@@ -622,12 +750,12 @@ class ModelShowCommand(Command):
                 if input_cost_per_million:
                     input_cost_str = f"${input_cost_per_million:.4f}"
                 else:
-                    input_cost_str = "Free"
+                    input_cost_str = t('model_free')
 
                 if output_cost_per_million:
                     output_cost_str = f"${output_cost_per_million:.4f}"
                 else:
-                    output_cost_str = "Free"
+                    output_cost_str = t('model_free')
 
                 # Get features
                 features = []
@@ -687,17 +815,17 @@ class ModelShowCommand(Command):
                         size_gb = size_mb / 1024
                         size_str = f"{size_gb:.1f} GB"
                 
-                model_description = "Local model"
+                model_description = t('model_local')
                 if size_str:
                     model_description += f" ({size_str})"
-                
+
                 model_table.add_row(
                     str(model_index),
                     model_name,
                     "Ollama",
                     "Varies",
-                    "Free",
-                    "Free",
+                    t('model_free'),
+                    t('model_free'),
                     model_description
                 )
 
@@ -705,10 +833,8 @@ class ModelShowCommand(Command):
             console.print(model_table)
 
             # Display summary
-            displayed_str = str(displayed_models)
-            total_str = str(total_models)
             summary_text = (
-                f"\n[cyan]{t('model_show_summary', displayed=displayed_str, total=total_str)}"
+                f"\n[cyan]{t('model_show_summary', displayed=displayed_models, total=total_models)}"
             )
             if show_only_supported:
                 summary_text += t('model_show_with_func')
@@ -731,7 +857,7 @@ class ModelShowCommand(Command):
                 "https://github.com/BerriAI/litellm/blob/main/"
                 "model_prices_and_context_window.json"
             )
-            console.print(f"\n[dim]Data source: {data_source}[/dim]")
+            console.print(f"\n[dim]{t('model_data_source', url=data_source)}[/dim]")
 
         except Exception as e:  # pylint: disable=broad-except
             console.print(f"[red]{t('model_fetch_error', error=str(e))}[/red]")

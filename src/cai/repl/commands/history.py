@@ -11,8 +11,8 @@ from rich.panel import Panel  # pylint: disable=import-error
 from rich.table import Table  # pylint: disable=import-error
 from rich.tree import Tree  # pylint: disable=import-error
 
-from cai.i18n import t
 from cai.repl.commands.base import Command, register_command
+from cai.i18n import t
 
 console = Console()
 
@@ -24,16 +24,16 @@ class HistoryCommand(Command):
         """Initialize the history command."""
         super().__init__(
             name="/history",
-            description="Display conversation history (optionally filtered by agent name)",
+            description=t('help_history_desc'),
             aliases=["/his"],
         )
 
         # Add subcommands
-        self.add_subcommand("all", "Show history from all agents", self.handle_all)
-        self.add_subcommand("agent", "Show history for a specific agent", self.handle_agent)
-        self.add_subcommand("search", "Search messages across all agents", self.handle_search)
+        self.add_subcommand("all", t('help_history_all'), self.handle_all)
+        self.add_subcommand("agent", t('help_history_agent'), self.handle_agent)
+        self.add_subcommand("search", t('help_history_search'), self.handle_search)
         self.add_subcommand(
-            "index", "Show message by index and optionally filter by role", self.handle_index
+            "index", t('help_history_index'), self.handle_index
         )
 
     def handle(self, args: Optional[List[str]] = None) -> bool:
@@ -79,13 +79,13 @@ class HistoryCommand(Command):
         # Get all histories from AGENT_MANAGER
         all_histories = AGENT_MANAGER.get_all_histories()
         registered_agents = AGENT_MANAGER.get_registered_agents()
-        
+
         # Check if we're in parallel mode with isolation
         from cai.sdk.agents.parallel_isolation import PARALLEL_ISOLATION
-        
+
         # Check if we have parallel configs AND isolated histories (don't rely on _parallel_mode flag)
         has_isolated_histories = len(PARALLEL_ISOLATION._isolated_histories) > 0
-        
+
         # Clean up any duplicate registrations before displaying
         if PARALLEL_CONFIGS:
             # In parallel mode, ensure each ID is only registered to one agent
@@ -95,8 +95,9 @@ class HistoryCommand(Command):
                     # Resolve the correct agent name for this config
                     if config.agent_name.endswith("_pattern"):
                         from cai.agents.patterns import get_pattern
+
                         pattern = get_pattern(config.agent_name)
-                        if pattern and hasattr(pattern, 'entry_agent'):
+                        if pattern and hasattr(pattern, "entry_agent"):
                             correct_name = getattr(pattern.entry_agent, "name", config.agent_name)
                             id_to_correct_agent[config.id] = correct_name
                     else:
@@ -105,34 +106,36 @@ class HistoryCommand(Command):
                             agent = available_agents[config.agent_name]
                             correct_name = getattr(agent, "name", config.agent_name)
                             id_to_correct_agent[config.id] = correct_name
-            
+
             # Remove any incorrect registrations
             for agent_name, agent_id in list(AGENT_MANAGER._agent_registry.items()):
                 if agent_id in id_to_correct_agent and agent_name != id_to_correct_agent[agent_id]:
                     del AGENT_MANAGER._agent_registry[agent_name]
-        
+
         if PARALLEL_CONFIGS and has_isolated_histories:
             # In parallel mode, we should primarily use isolated histories
             # Clear all_histories and rebuild from isolated histories
             all_histories = {}
-            
+
             for idx, config in enumerate(PARALLEL_CONFIGS, 1):
                 agent_id = config.id or f"P{idx}"
-                
+
                 isolated_history = PARALLEL_ISOLATION.get_isolated_history(agent_id)
-                
+
                 # Always create entry, even if history is empty
                 if isolated_history is None:
                     isolated_history = []
-                    
+
                 # Find the display name for this agent
                 available_agents = get_available_agents()
                 if config.agent_name in available_agents:
                     agent = available_agents[config.agent_name]
                     display_name = getattr(agent, "name", config.agent_name)
-                    
+
                     # Count instances for numbering
-                    total_count = sum(1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name)
+                    total_count = sum(
+                        1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name
+                    )
                     if total_count > 1:
                         # Find instance number
                         instance_num = 0
@@ -142,46 +145,46 @@ class HistoryCommand(Command):
                                 if c.id == config.id:
                                     break
                         display_name = f"{display_name} #{instance_num}"
-                    
+
                     # Add agent ID to display name
                     full_display_name = f"{display_name} [{agent_id}]"
                     all_histories[full_display_name] = isolated_history
-        
+
         # Get the current agent from environment
         current_agent_type = os.getenv("CAI_AGENT_TYPE", "one_tool_agent")
         parallel_count = int(os.getenv("CAI_PARALLEL", "1"))
-        
+
         # Create a unified view of all agents that should be shown
         agents_to_show = {}
         seen_agent_names = set()  # Track which agent names we've already added
-        
+
         # First, add all registered agents from AGENT_MANAGER
         for display_name, history in all_histories.items():
             agents_to_show[display_name] = {
-                'history': history,
-                'source': 'manager',
-                'is_registered': True
+                "history": history,
+                "source": "manager",
+                "is_registered": True,
             }
             # Extract base name for tracking
             base_name = display_name.split(" [")[0] if "[" in display_name else display_name
             seen_agent_names.add(base_name)
-        
+
         # If in parallel mode, ensure all configured agents are shown
         if parallel_count > 1 and PARALLEL_CONFIGS:
             available_agents = get_available_agents()
-            
+
             # Count instances of each agent type for proper numbering
             agent_counts = {}
             for config in PARALLEL_CONFIGS:
                 agent_counts[config.agent_name] = agent_counts.get(config.agent_name, 0) + 1
-            
+
             agent_instances = {}
-            
+
             for idx, config in enumerate(PARALLEL_CONFIGS, 1):
                 if config.agent_name in available_agents:
                     agent = available_agents[config.agent_name]
                     base_name = getattr(agent, "name", config.agent_name)
-                    
+
                     # Generate display name with instance number if needed
                     if agent_counts[config.agent_name] > 1:
                         if config.agent_name not in agent_instances:
@@ -190,91 +193,120 @@ class HistoryCommand(Command):
                         full_display_name = f"{base_name} #{agent_instances[config.agent_name]}"
                     else:
                         full_display_name = base_name
-                    
+
                     # Always use the ID from config
                     agent_id = config.id or f"P{idx}"
                     display_name = f"{full_display_name} [{agent_id}]"
-                    
+
                     # Check if we already have this agent in our view
                     if display_name not in agents_to_show:
                         # Get history from AGENT_MANAGER if available
                         history = AGENT_MANAGER.get_message_history(base_name) or []
-                        
+
                         agents_to_show[display_name] = {
-                            'history': history,
-                            'source': 'parallel_config',
-                            'is_registered': base_name in registered_agents,
-                            'config': config,
-                            'agent_id': agent_id
+                            "history": history,
+                            "source": "parallel_config",
+                            "is_registered": base_name in registered_agents,
+                            "config": config,
+                            "agent_id": agent_id,
                         }
-        
+
         # If in single agent mode, ensure the current agent is shown
         elif parallel_count == 1:
             # Check if we should show the current agent
             current_agent = AGENT_MANAGER.get_active_agent()
             if current_agent:
-                agent_name = getattr(current_agent, 'name', current_agent_type)
+                agent_name = getattr(current_agent, "name", current_agent_type)
                 agent_id = AGENT_MANAGER.get_agent_id()
                 display_name = f"{agent_name} [{agent_id}]"
-                
+
                 if display_name not in agents_to_show:
                     history = AGENT_MANAGER.get_message_history(agent_name) or []
                     agents_to_show[display_name] = {
-                        'history': history,
-                        'source': 'active',
-                        'is_registered': True
+                        "history": history,
+                        "source": "active",
+                        "is_registered": True,
                     }
-                    
+
                     # Also ensure this agent is properly registered in AGENT_MANAGER
                     # This handles the startup case where the agent might not be fully registered
                     if agent_id == "P1" and not AGENT_MANAGER.get_agent_by_id("P1"):
                         AGENT_MANAGER._agent_registry[agent_name] = "P1"
-        
+
         if not agents_to_show:
             console.print(f"[yellow]{t('history_no_agents')}[/yellow]")
             console.print(f"[dim]{t('history_start_hint')}[/dim]")
             return True
-        
+
         # Create a tree view showing all agents
         tree = Tree(f":robot: [bold cyan]{t('history_control_panel')}[/bold cyan]")
-        
+
         total_messages = 0
-        
+
         # Sort agents by ID for consistent display
         def get_sort_key(item):
             display_name = item[0]
             # Extract ID from display name
             if "[" in display_name and "]" in display_name:
-                agent_id = display_name[display_name.rindex("[")+1:display_name.rindex("]")]
+                agent_id = display_name[display_name.rindex("[") + 1 : display_name.rindex("]")]
                 # Sort P1, P2, etc. numerically
                 if agent_id.startswith("P") and agent_id[1:].isdigit():
                     return (0, int(agent_id[1:]))
             return (1, display_name)
-        
-        # Show agents with their histories
-        for display_name, agent_info in sorted(agents_to_show.items(), key=lambda x: get_sort_key(x)):
-            history = agent_info['history']
-            msg_count = len(history)
-            total_messages += msg_count
-            
+
+        # Group agents by P-ID to detect duplicates
+        agents_by_pid = {}
+        for display_name, agent_info in agents_to_show.items():
             # Extract agent ID from display name
             agent_id = None
             if "[" in display_name and "]" in display_name:
-                agent_id = display_name[display_name.rindex("[")+1:display_name.rindex("]")]
+                agent_id = display_name[display_name.rindex("[") + 1 : display_name.rindex("]")]
             
+            if agent_id and agent_id.startswith("P"):
+                if agent_id not in agents_by_pid:
+                    agents_by_pid[agent_id] = []
+                agents_by_pid[agent_id].append((display_name, agent_info))
+        
+        # Track which agents we've already shown (to avoid duplicates)
+        shown_pids = set()
+
+        # Show agents with their histories
+        for display_name, agent_info in sorted(
+            agents_to_show.items(), key=lambda x: get_sort_key(x)
+        ):
+            history = agent_info["history"]
+            msg_count = len(history)
+
+            # Extract agent ID from display name
+            agent_id = None
+            if "[" in display_name and "]" in display_name:
+                agent_id = display_name[display_name.rindex("[") + 1 : display_name.rindex("]")]
+            
+            # Skip this agent if we've already shown one with the same P-ID
+            if agent_id and agent_id.startswith("P"):
+                if agent_id in shown_pids:
+                    continue
+                shown_pids.add(agent_id)
+                
+                # If there are multiple agents with this P-ID, just use the first one
+                # The duplicate is completely ignored and won't be shown
+            
+            # Count messages for total
+            total_messages += msg_count
+
             # Determine status
             status_parts = []
             if msg_count == 0:
                 status_parts.append(f"[yellow]{t('history_no_messages')}[/yellow]")
-            
+
             # Check if this agent is currently active
             is_current = False
             agent_base_name = display_name.split(" [")[0] if "[" in display_name else display_name
-            
+
             # Remove instance number for comparison
             if " #" in agent_base_name:
                 agent_base_name = agent_base_name.split(" #")[0]
-            
+
             if parallel_count == 1:
                 # In single agent mode, check if this is the active agent
                 current_id = AGENT_MANAGER.get_agent_id()
@@ -282,37 +314,37 @@ class HistoryCommand(Command):
                     is_current = True
             else:
                 # In parallel mode, check if it's in the current parallel configs
-                if agent_info.get('source') == 'parallel_config':
+                if agent_info.get("source") == "parallel_config":
                     is_current = True
-            
+
             if is_current:
                 status_parts.append(f"[green]{t('history_active')}[/green]")
-            elif agent_info.get('is_registered'):
+            elif agent_info.get("is_registered"):
                 status_parts.append(f"[blue]{t('history_registered')}[/blue]")
-            
+
             # Check for model override in config
-            if 'config' in agent_info and agent_info['config'].model:
+            if "config" in agent_info and agent_info["config"].model:
                 status_parts.append(f"[blue](model: {agent_info['config'].model})[/blue]")
-            
+
             status = " ".join(status_parts)
-            
+
             # Count messages by role
             role_counts = {}
             for msg in history:
                 role = msg.get("role", "unknown")
                 role_counts[role] = role_counts.get(role, 0) + 1
-            
+
             # Check if agent has applied memory
             base_agent_name = display_name.split(" [")[0] if "[" in display_name else display_name
             # Remove instance number for memory check
             if " #" in base_agent_name:
                 base_agent_name = base_agent_name.split(" #")[0]
-            
+
             # Import COMPACTED_SUMMARIES and APPLIED_MEMORY_IDS from compact module
             memory_indicator = ""
             try:
                 from cai.repl.commands.memory import COMPACTED_SUMMARIES, APPLIED_MEMORY_IDS
-                
+
                 # Check if agent has a memory applied
                 if base_agent_name in COMPACTED_SUMMARIES:
                     # Check if we have a stored memory ID for this agent
@@ -323,14 +355,14 @@ class HistoryCommand(Command):
                         memory_indicator = " [magenta](Memory: Applied)[/magenta]"
             except ImportError:
                 pass
-            
+
             # Create agent branch with appropriate styling
             if is_current:
                 branch_text = f":robot: [bold cyan]{display_name}[/bold cyan] ({msg_count} messages) {status}{memory_indicator}"
             else:
                 branch_text = f":gear: [green]{display_name}[/green] ({msg_count} messages) {status}{memory_indicator}"
             agent_branch = tree.add(branch_text)
-            
+
             # Add role breakdown if there are messages
             if role_counts:
                 for role, count in sorted(role_counts.items()):
@@ -343,23 +375,23 @@ class HistoryCommand(Command):
                     agent_branch.add(f"[{role_style}]{role}[/{role_style}]: {count}")
             else:
                 agent_branch.add(f"[dim]{t('history_no_messages_yet')}[/dim]")
-        
+
         console.print(tree)
         console.print(f"\n[bold]{t('history_total_messages', count=total_messages)}[/bold]")
-        
+
         # Show usage hints
         console.print(f"\n[dim]{t('history_commands_label')}[/dim]")
-        console.print(f"[dim]  • {t('history_cmd_id')}[/dim]")
-        console.print(f"[dim]  • {t('history_cmd_agent')}[/dim]")
-        console.print(f"[dim]  • {t('history_cmd_search')}[/dim]")
-        console.print(f"[dim]  • {t('history_cmd_index')}[/dim]")
+        console.print(f"[dim]  {t('history_cmd_id')}[/dim]")
+        console.print(f"[dim]  {t('history_cmd_agent')}[/dim]")
+        console.print(f"[dim]  {t('history_cmd_search')}[/dim]")
+        console.print(f"[dim]  {t('history_cmd_index')}[/dim]")
 
         return True
 
     def handle_all(self, args: Optional[List[str]] = None) -> bool:
         """Show history from all agents in chronological order."""
         from cai.sdk.agents.simple_agent_manager import AGENT_MANAGER
-        
+
         all_histories = AGENT_MANAGER.get_all_histories()
 
         if not all_histories:
@@ -420,21 +452,28 @@ class HistoryCommand(Command):
 
         # Join all args to handle agent names with spaces
         agent_identifier = " ".join(args)
-        
+
         from cai.sdk.agents.simple_agent_manager import AGENT_MANAGER
         from cai.sdk.agents.parallel_isolation import PARALLEL_ISOLATION
         from cai.repl.commands.parallel import PARALLEL_CONFIGS
-        
+
         agent_name = None
         agent_id = None
         history = None
-        
+
         # First try direct ID lookup (P1, P2, etc.)
-        if agent_identifier.upper().startswith("P") and len(agent_identifier) >= 2 and agent_identifier[1:].isdigit():
+        if (
+            agent_identifier.upper().startswith("P")
+            and len(agent_identifier) >= 2
+            and agent_identifier[1:].isdigit()
+        ):
             agent_id = agent_identifier.upper()
-            
+
             # Check if we're in parallel mode and have isolated history
-            if PARALLEL_ISOLATION.is_parallel_mode() and PARALLEL_ISOLATION.has_isolated_histories():
+            if (
+                PARALLEL_ISOLATION.is_parallel_mode()
+                and PARALLEL_ISOLATION.has_isolated_histories()
+            ):
                 isolated_history = PARALLEL_ISOLATION.get_isolated_history(agent_id)
                 if isolated_history is not None:
                     # Find the agent name from PARALLEL_CONFIGS
@@ -442,12 +481,15 @@ class HistoryCommand(Command):
                         config_id = config.id or f"P{idx}"
                         if config_id == agent_id:
                             from cai.agents import get_available_agents
+
                             available_agents = get_available_agents()
                             if config.agent_name in available_agents:
                                 agent = available_agents[config.agent_name]
                                 agent_name = getattr(agent, "name", config.agent_name)
                                 # Add instance number if needed
-                                total_count = sum(1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name)
+                                total_count = sum(
+                                    1 for c in PARALLEL_CONFIGS if c.agent_name == config.agent_name
+                                )
                                 if total_count > 1:
                                     instance_num = 0
                                     for c in PARALLEL_CONFIGS:
@@ -458,7 +500,7 @@ class HistoryCommand(Command):
                                     agent_name = f"{agent_name} #{instance_num}"
                                 history = isolated_history
                                 break
-            
+
             # If not found in isolated histories, try AGENT_MANAGER
             if history is None:
                 agent_name = AGENT_MANAGER.get_agent_by_id(agent_id)
@@ -470,7 +512,7 @@ class HistoryCommand(Command):
                     current_id = AGENT_MANAGER.get_agent_id()
                     if current_agent and current_id == agent_id:
                         # Get the agent name from the agent object
-                        agent_name = getattr(current_agent, 'name', 'Unknown')
+                        agent_name = getattr(current_agent, "name", "Unknown")
                         history = AGENT_MANAGER.get_message_history(agent_name)
                         # Make sure this agent is registered in AGENT_MANAGER
                         if not AGENT_MANAGER.get_agent_by_id(agent_id):
@@ -483,7 +525,7 @@ class HistoryCommand(Command):
                             current_agent = AGENT_MANAGER.get_active_agent()
                             if current_agent:
                                 # Get the agent name and register it properly
-                                agent_name = getattr(current_agent, 'name', 'Unknown')
+                                agent_name = getattr(current_agent, "name", "Unknown")
                                 # Force registration with P1 ID
                                 AGENT_MANAGER._agent_registry[agent_name] = "P1"
                                 AGENT_MANAGER._agent_id = "P1"
@@ -498,9 +540,11 @@ class HistoryCommand(Command):
                                         # Register it with P1
                                         AGENT_MANAGER._agent_registry[agent_name] = "P1"
                                         break
-                                
+
                                 if not history:
-                                    console.print(f"[yellow]{t('history_no_agent_id', id=agent_id)}[/yellow]")
+                                    console.print(
+                                        f"[yellow]{t('history_no_agent_id', id=agent_id)}[/yellow]"
+                                    )
                                     return True
                         else:
                             console.print(f"[yellow]{t('history_no_agent_id', id=agent_id)}[/yellow]")
@@ -508,7 +552,7 @@ class HistoryCommand(Command):
         else:
             # Try to find by name in all histories
             all_histories = AGENT_MANAGER.get_all_histories()
-            
+
             # First try exact match
             if agent_identifier in all_histories:
                 agent_name = agent_identifier
@@ -517,19 +561,21 @@ class HistoryCommand(Command):
                 # Try to find by name in display format
                 for display_name, history_data in all_histories.items():
                     # Extract agent name from display format "Agent Name [ID]"
-                    if '[' in display_name:
-                        name_part = display_name.split('[')[0].strip()
-                        id_part = display_name[display_name.rindex("[")+1:display_name.rindex("]")]
+                    if "[" in display_name:
+                        name_part = display_name.split("[")[0].strip()
+                        id_part = display_name[
+                            display_name.rindex("[") + 1 : display_name.rindex("]")
+                        ]
                     else:
                         name_part = display_name
                         id_part = None
-                    
+
                     if name_part.lower() == agent_identifier.lower():
                         agent_name = name_part
                         agent_id = id_part
                         history = history_data
                         break
-        
+
         if not agent_name:
             console.print(f"[yellow]{t('history_no_agent_match', id=agent_identifier)}[/yellow]")
             return True
@@ -545,14 +591,16 @@ class HistoryCommand(Command):
             # Get the agent ID if we don't have it
             if not agent_id:
                 agent_id = AGENT_MANAGER.get_id_by_name(agent_name) or "Unknown"
-            
-            console.print(Panel(
-                f"[yellow]{t('history_no_conversation')}[/yellow]",
-                title=f"[cyan]{agent_name} [{agent_id}][/cyan]",
-                border_style="blue"
-            ))
+
+            console.print(
+                Panel(
+                    f"[yellow]{t('history_no_conversation')}[/yellow]",
+                    title=f"[cyan]{agent_name} [{agent_id}][/cyan]",
+                    border_style="blue",
+                )
+            )
             return True
-        
+
         # Get the agent ID if we don't have it
         if not agent_id:
             agent_id = AGENT_MANAGER.get_id_by_name(agent_name) or "Unknown"
@@ -621,7 +669,7 @@ class HistoryCommand(Command):
         search_term = " ".join(args).lower()
 
         from cai.sdk.agents.simple_agent_manager import AGENT_MANAGER
-        
+
         all_histories = AGENT_MANAGER.get_all_histories()
 
         if not all_histories:
@@ -697,9 +745,16 @@ class HistoryCommand(Command):
         Returns:
             Formatted string representation of the message content
         """
+        parts: List[str] = []
+
+        # Show the assistant/user text first (even when tool calls exist)
+        if content:
+            parts.append(content[:297] + "..." if len(content) > 300 else content)
+
         if tool_calls:
             # Format tool calls into a readable string
-            result = []
+            if parts:
+                parts.append("[dim]Tool Calls:[/dim]")
             for tc in tool_calls:
                 func_details = tc.get("function", {})
                 func_name = func_details.get("name", "unknown_function")
@@ -719,18 +774,44 @@ class HistoryCommand(Command):
                     if len(args_formatted) > 200:
                         args_formatted = args_formatted[:197] + "..."
 
-                result.append(f"Function: [bold blue]{func_name}[/bold blue]")
-                result.append(f"Args: {args_formatted}")
+                parts.append(f"Function: [bold blue]{func_name}[/bold blue]")
+                parts.append(f"Args: {args_formatted}")
 
-            return "\n".join(result)
-        elif content:
-            # Regular text content (truncate if too long)
-            if len(content) > 300:
-                return content[:297] + "..."
-            return content
-        else:
-            # No content or tool calls (empty message)
-            return f"[dim italic]{t('history_empty_message')}[/dim italic]"
+        if parts:
+            return "\n".join(parts)
+
+        # No content or tool calls (empty message)
+        return f"[dim italic]{t('history_empty_message')}[/dim italic]"
+
+    def _format_message_content_full(self, content: Any, tool_calls: List[Dict[str, Any]]) -> str:
+        """Like _format_message_content, but without any truncation limits.
+
+        Used for `/history index` so the complete message is shown.
+        """
+        parts: List[str] = []
+
+        if content:
+            parts.append(str(content))
+
+        if tool_calls:
+            if parts:
+                parts.append("[dim]Tool Calls:[/dim]")
+            for tc in tool_calls:
+                func = tc.get("function", {}) or {}
+                func_name = func.get("name", "unknown_function")
+                args_str = func.get("arguments", "{}")
+                try:
+                    args_dict = json.loads(args_str)
+                    args_formatted = json.dumps(args_dict, indent=2)
+                except (json.JSONDecodeError, TypeError):
+                    args_formatted = str(args_str)
+                parts.append(f"Function: [bold blue]{func_name}[/bold blue]")
+                parts.append(f"Args: {args_formatted}")
+
+        if parts:
+            return "\n".join(parts)
+
+        return f"[dim italic]{t('history_empty_message')}[/dim italic]"
 
     def handle_index(self, args: Optional[List[str]] = None) -> bool:
         """Show message by index and optionally filter by role.
@@ -740,8 +821,6 @@ class HistoryCommand(Command):
         if not args or len(args) < 2:
             console.print(f"[red]{t('history_error_index_required')}[/red]")
             console.print(t('history_usage_index'))
-            console.print("Example: /history index red_teamer 5")
-            console.print('Example: /history index "Bug Bounter #1" 5 user')
             return False
 
         # Find where the index is (it should be a number)
@@ -770,7 +849,7 @@ class HistoryCommand(Command):
         role_filter = args[index_pos + 1].lower() if len(args) > index_pos + 1 else None
 
         from cai.sdk.agents.simple_agent_manager import AGENT_MANAGER
-        
+
         # Get agent name by ID if an ID was provided
         if agent_name.upper().startswith("P") and len(agent_name) >= 2 and agent_name[1:].isdigit():
             agent_id = agent_name.upper()
@@ -837,7 +916,8 @@ class HistoryCommand(Command):
                             break
             formatted_content = f"[dim]Tool: {tool_name} (ID: {tool_call_id})[/dim]\n{content}"
         else:
-            formatted_content = self._format_message_content(content, tool_calls)
+            # For index view, show full content without truncation
+            formatted_content = self._format_message_content_full(content, tool_calls)
 
         # Color the role based on type
         role_style = {

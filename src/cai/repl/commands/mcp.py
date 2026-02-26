@@ -10,31 +10,27 @@ USAGE EXAMPLES:
 1. Load an SSE (Server-Sent Events) MCP server:
    /mcp load http://localhost:9876/sse burp
 
-2. Load an SSE server with authentication headers:
-   /mcp load https://mcp.ai.hackthebox.com/v1/ctf/sse htb --header "Authorization: Bearer YOUR_TOKEN"
-   /mcp load https://api.example.com/mcp myapi -H "X-API-Key: secret" -H "Custom-Header: value"
-
-3. Load a STDIO MCP server:
+2. Load a STDIO MCP server:
    /mcp load stdio myserver python mcp_server.py
    /mcp load stdio myserver node server.js --port 8080
 
-4. List all active MCP connections:
+3. List all active MCP connections:
    /mcp list
 
-5. Add MCP tools to an agent:
+4. Add MCP tools to an agent:
    /mcp add burp redteam_agent     # Add by agent name
    /mcp add burp 13                 # Add by agent number
 
-6. List tools from a specific server:
+5. List tools from a specific server:
    /mcp tools burp
 
-7. Check server connection status:
+6. Check server connection status:
    /mcp status
 
-8. Remove a server connection:
+7. Remove a server connection:
    /mcp remove burp
 
-9. Show help:
+8. Show help:
    /mcp help
 
 NOTES:
@@ -67,6 +63,7 @@ from rich.table import Table
 
 # Local imports
 from cai.agents import get_agent_by_name, get_available_agents
+from cai.i18n import t
 from cai.repl.commands.base import Command, register_command
 from cai.sdk.agents.mcp import (
     MCPServer,
@@ -90,6 +87,25 @@ _SERVER_INVOCATION_LOCKS: Dict[str, asyncio.Lock] = {}
 # Maps agent name to list of MCP server names
 _AGENT_MCP_ASSOCIATIONS: Dict[str, List[str]] = {}
 
+
+# Registry of tool name -> MCP server name for UI visualization
+_MCP_TOOL_NAME_TO_SERVER: Dict[str, str] = {}
+
+
+def register_mcp_tool_name(tool_name: str, server_name: str) -> None:
+    """Register mapping used by the TUI to decorate MCP tools."""
+    try:
+        _MCP_TOOL_NAME_TO_SERVER[str(tool_name)] = str(server_name)
+    except Exception:
+        pass
+
+
+def get_mcp_server_for_tool(tool_name: str) -> Optional[str]:
+    """Return server name for a given tool if known."""
+    try:
+        return _MCP_TOOL_NAME_TO_SERVER.get(str(tool_name))
+    except Exception:
+        return None
 
 # Custom MCPUtil that uses global registry
 class GlobalMCPUtil(MCPUtil):
@@ -117,7 +133,9 @@ class GlobalMCPUtil(MCPUtil):
         # For SSE servers, capture the URL
         if isinstance(server, MCPServerSse):
             server_config["url"] = server.params.get("url")
-            server_config["headers"] = server.params.get("headers")
+            server_config["headers"] = MCPUtil.get_default_auth_headers(
+                server.params.get("headers")
+            )
             server_config["timeout"] = server.params.get("timeout", 5)
             server_config["sse_read_timeout"] = server.params.get("sse_read_timeout", 60 * 5)
         # For STDIO servers, capture the command
@@ -141,6 +159,7 @@ class GlobalMCPUtil(MCPUtil):
             from cai.sdk.agents.exceptions import AgentsException, ModelBehaviorError
             from cai.sdk.agents.mcp import MCPServerSse, MCPServerStdio
 
+            # Parse JSON input
             try:
                 json_data = json.loads(input_json) if input_json else {}
             except Exception as e:
@@ -155,6 +174,7 @@ class GlobalMCPUtil(MCPUtil):
             should_cleanup = False
             persistent = bool(config.get("persistent"))
 
+            # Suppress warnings about async generator cleanup
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=RuntimeWarning)
                 warnings.filterwarnings("ignore", message=".*asynchronous generator.*")
@@ -212,20 +232,24 @@ class GlobalMCPUtil(MCPUtil):
                                     await asyncio.sleep(0.5)
                     else:
                         if config["type"] == "MCPServerSse":
+                            # Create new SSE server
+                            headers = MCPUtil.get_default_auth_headers(config.get("headers"))
                             params = {
                                 "url": config["url"],
-                                "headers": config.get("headers"),
+                                "headers": headers,
                                 "timeout": config.get("timeout", 5),
                                 "sse_read_timeout": config.get("sse_read_timeout", 60 * 5),
                             }
+                            # Remove None values
                             params = {k: v for k, v in params.items() if v is not None}
 
                             server = MCPServerSse(
                                 params,
                                 name=config["name"],
-                                cache_tools_list=False,
+                                cache_tools_list=False,  # Don't cache since it's temporary
                             )
                         elif config["type"] == "MCPServerStdio":
+                            # Create new STDIO server
                             params = {
                                 "command": config["command"],
                                 "args": config.get("args", []),
@@ -236,6 +260,7 @@ class GlobalMCPUtil(MCPUtil):
                                     "encoding_error_handler", "strict"
                                 ),
                             }
+                            # Remove None values
                             params = {k: v for k, v in params.items() if v is not None}
 
                             server = MCPServerStdio(
@@ -279,9 +304,11 @@ class GlobalMCPUtil(MCPUtil):
                                     server.session = None
                                 await asyncio.sleep(0.5)
                 except Exception as e:
+                    # Handle ClosedResourceError and connection issues
                     error_type = type(e).__name__
                     error_str = str(e).lower()
 
+                    # Improved error messages for common issues
                     if (
                         error_type in ("ClosedResourceError", "ExceptionGroup")
                         or "closedresourceerror" in error_str
@@ -295,6 +322,7 @@ class GlobalMCPUtil(MCPUtil):
                     raise AgentsException(
                         f"Error invoking MCP tool {config['tool_name']}: {type(e).__name__}: {str(e)}"
                     ) from e
+
                 finally:
                     if should_cleanup and server:
                         if isinstance(server, MCPServerSse):
@@ -309,40 +337,33 @@ class GlobalMCPUtil(MCPUtil):
                             except (asyncio.TimeoutError, Exception):
                                 pass
 
+            # Format the result
             if not result:
                 raise AgentsException(f"No result returned from MCP tool {config['tool_name']}")
 
-            # Convert result to string format
-            if len(result.content) == 1:
-                tool_output = result.content[0].model_dump_json()
-            elif len(result.content) > 1:
-                tool_output = json.dumps([item.model_dump() for item in result.content])
-            else:
-                tool_output = "Error running tool."
-
-            # Handle tracing if needed
-            from cai.sdk.agents.tracing import FunctionSpanData, get_current_span
-
-            current_span = get_current_span()
-            if current_span:
-                if isinstance(current_span.span_data, FunctionSpanData):
-                    current_span.span_data.output = tool_output
-                    current_span.span_data.mcp_data = {
-                        "server": config["name"],
-                    }
+            # Reuse the shared MCP formatting helper so tools return readable text
+            tool_output = await MCPUtil._format_tool_result(result, tool, server)
 
             return tool_output
 
         # Use functools.partial to bind the server config
         invoke_func = functools.partial(invoke_with_fresh_connection, server_config)
 
-        return FunctionTool(
+        ft = FunctionTool(
             name=tool.name,
             description=tool.description or "",
             params_json_schema=tool.inputSchema,
             on_invoke_tool=invoke_func,
             strict_json_schema=False,
         )
+        # Mark and register for UI
+        try:
+            setattr(ft, "_is_mcp_tool", True)
+            setattr(ft, "_mcp_server", server_name)
+            register_mcp_tool_name(tool.name, server_name)
+        except Exception:
+            pass
+        return ft
 
 
 def cleanup_mcp_servers():
@@ -350,11 +371,12 @@ def cleanup_mcp_servers():
     try:
         if _GLOBAL_MCP_SERVERS:
             import warnings
+
             # Suppress async generator warnings during cleanup
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=RuntimeWarning)
                 warnings.filterwarnings("ignore", message=".*asynchronous generator.*")
-                
+
                 # Create new event loop for cleanup if needed
                 try:
                     loop = asyncio.get_running_loop()
@@ -396,20 +418,20 @@ class MCPCommand(Command):
         """Initialize the MCP command."""
         super().__init__(
             name="/mcp",
-            description="Manage MCP servers and add their tools to agents",
+            description=t('mcp_description'),
             aliases=["/m"],
         )
 
         # Add subcommands manually
         self._subcommands = {
-            "load": "Load an MCP server (SSE or stdio)",
-            "list": "List active MCP connections",
-            "add": "Add MCP tools to an agent",
-            "remove": "Remove an MCP server connection",
-            "tools": "List tools from an MCP server",
-            "status": "Check MCP server connection status",
-            "associations": "Show agent-MCP associations",
-            "help": "Show MCP command usage",
+            "load": t('mcp_sub_load'),
+            "list": t('mcp_sub_list'),
+            "add": t('mcp_sub_add'),
+            "remove": t('mcp_sub_remove'),
+            "tools": t('mcp_sub_tools'),
+            "status": t('mcp_sub_status'),
+            "associations": t('mcp_sub_associations'),
+            "help": t('mcp_sub_help'),
         }
 
     def get_subcommands(self) -> List[str]:
@@ -450,10 +472,10 @@ class MCPCommand(Command):
                 try:
                     return handler(args[1:] if len(args) > 1 else None)
                 except Exception as e:
-                    console.print(f"[red]Error executing command: {e}[/red]")
+                    console.print(f"[red]{t('mcp_error_executing').format(error=e)}[/red]")
                     return False
 
-        console.print(f"[red]Unknown subcommand: {subcommand}[/red]")
+        console.print(f"[red]{t('mcp_unknown_subcommand').format(subcommand=subcommand)}[/red]")
         self.show_usage()
         return False
 
@@ -470,20 +492,9 @@ The MCP command allows you to manage Model Context Protocol servers and integrat
 
 **SSE (Server-Sent Events) Server:**
 ```
-/mcp load <url> <name> [--header "Key: Value" | -H "Key: Value"]
+/mcp load <url> <name>
 ```
 Example: `/mcp load http://localhost:9876/sse burp`
-
-**SSE Server with Authentication:**
-```
-/mcp load <url> <name> --header "Authorization: Bearer TOKEN"
-```
-Example: `/mcp load https://mcp.ai.hackthebox.com/v1/ctf/sse htb --header "Authorization: Bearer eyJ0..."`
-
-You can specify multiple headers by repeating the flag:
-```
-/mcp load <url> <name> -H "Header1: Value1" -H "Header2: Value2"
-```
 
 **STDIO Server:**
 ```
@@ -613,8 +624,9 @@ Example: `/mcp add burp 13`
         """Handle /mcp load command.
 
         Usage:
-            /mcp load <url> <name> [--header "Key: Value"] - Load SSE server with optional auth headers
-            /mcp load stdio <name> <command> [args...]     - Load stdio server
+            /mcp load <url> <name>                 - Load SSE server
+            /mcp load sse <url> <name>             - Load SSE server (legacy form, kept for compatibility)
+            /mcp load stdio <name> <command> [args...] - Load stdio server
 
         Args:
             args: List of command arguments
@@ -623,16 +635,17 @@ Example: `/mcp add burp 13`
             True if successful
         """
         if not args or len(args) < 2:
-            console.print("[red]Error: Invalid arguments[/red]")
+            console.print(f"[red]{t('mcp_error_invalid_args')}[/red]")
             console.print("Usage:")
-            console.print("  /mcp load <url> <name> [--header \"Key: Value\"]  - For SSE servers")
-            console.print("  /mcp load stdio <name> <command> [args...]        - For STDIO servers")
+            console.print(f"  /mcp load <url> <name>                 - {t('mcp_usage_load_sse')}")
+            console.print(f"  /mcp load sse <url> <name>             - {t('mcp_usage_load_sse_legacy')}")
+            console.print("  /mcp load stdio <name> <command> [args...]")
             return False
 
         # Check if it's a stdio server
         if args[0] == "stdio":
             if len(args) < 3:
-                console.print("[red]Error: stdio requires name and command[/red]")
+                console.print(f"[red]{t('mcp_error_stdio_requires')}[/red]")
                 return False
 
             name = args[1]
@@ -642,67 +655,143 @@ Example: `/mcp add burp 13`
             return self._load_stdio_server(name, command, cmd_args)
         else:
             # SSE server
-            url = args[0]
-            name = args[1]
+            # Support both:
+            #   /mcp load <url> <name>
+            #   /mcp load sse <url> <name>
+            if args[0] == "sse":
+                if len(args) < 3:
+                    console.print(f"[red]{t('mcp_error_missing_sse_url')}[/red]")
+                    console.print("Usage: /mcp load sse <url> <name>")
+                    return False
+                url = args[1]
+                name = args[2]
+            else:
+                url = args[0]
+                if len(args) < 2:
+                    console.print(f"[red]{t('mcp_error_missing_sse_name')}[/red]")
+                    console.print("Usage: /mcp load <url> <name>")
+                    return False
+                name = args[1]
 
-            # Parse headers from remaining arguments
-            headers = {}
-            i = 2
-            while i < len(args):
-                if args[i] in ["--header", "-H"]:
-                    if i + 1 >= len(args):
-                        console.print("[red]Error: --header requires a value[/red]")
-                        return False
+            return self._load_sse_server(url, name)
 
-                    # Parse header in format "Key: Value"
-                    header_str = args[i + 1]
-                    if ":" not in header_str:
-                        console.print(f"[red]Error: Invalid header format '{header_str}'. Use 'Key: Value'[/red]")
-                        return False
-
-                    key, value = header_str.split(":", 1)
-                    # Strip quotes and whitespace from key and value
-                    key = key.strip().strip('"').strip("'")
-                    value = value.strip().strip('"').strip("'")
-                    headers[key] = value
-                    i += 2
-                else:
-                    console.print(f"[yellow]Warning: Unknown argument '{args[i]}' ignored[/yellow]")
-                    i += 1
-
-            return self._load_sse_server(url, name, headers if headers else None)
-
-    def _load_sse_server(self, url: str, name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+    def _load_sse_server(self, url: str, name: str) -> bool:
         """Load an SSE MCP server.
 
         Args:
             url: URL of the SSE server
             name: Name to identify the server
-            headers: Optional HTTP headers for authentication (e.g., {"Authorization": "Bearer token"})
 
         Returns:
             True if successful
         """
         if name in _GLOBAL_MCP_SERVERS:
-            console.print(f"[yellow]Server '{name}' is already loaded and active.[/yellow]")
-            console.print(f"[dim]Use '/mcp remove {name}' first if you want to reload it.[/dim]")
+            console.print(f"[yellow]{t('mcp_server_already_loaded').format(name=name)}[/yellow]")
+            console.print(f"[dim]{t('mcp_server_remove_first').format(name=name)}[/dim]")
             return True
 
-        if headers:
-            console.print(f"Connecting to SSE server at {url} with authentication headers...")
-        else:
-            console.print(f"Connecting to SSE server at {url}...")
+        console.print(t('mcp_connecting_sse').format(url=url))
+
+        # Preflight validation to catch broken SSE servers early
+        def _preflight_sse(endpoint: str) -> bool:
+            try:
+                import requests
+                headers = MCPUtil.get_default_auth_headers(
+                    {
+                        "Accept": "text/event-stream",
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                    }
+                )
+                with requests.get(endpoint, headers=headers, stream=True, timeout=5) as resp:
+                    # Validate headers (warn if missing)
+                    ct = resp.headers.get("Content-Type", "")
+                    cc = resp.headers.get("Cache-Control", "")
+                    ka = resp.headers.get("Connection", "")
+                    if "text/event-stream" not in ct:
+                        console.print(f"[yellow]{t('mcp_warn_content_type')}[/yellow]")
+                    if "no-cache" not in cc.lower():
+                        console.print(f"[yellow]{t('mcp_warn_cache_control')}[/yellow]")
+                    if "keep-alive" not in ka.lower():
+                        console.print(f"[yellow]{t('mcp_warn_keep_alive')}[/yellow]")
+
+                    # Read a small portion to validate SSE framing
+                    buffer = b""
+                    event_name: str | None = None
+                    data_lines: list[str] = []
+                    for i, raw in enumerate(resp.iter_lines(chunk_size=1024, decode_unicode=False)):
+                        if i > 50:
+                            break  # don't hang
+                        if raw is None:
+                            continue
+                        line = raw.strip()
+                        if not line:
+                            # empty line signals end of event; try to validate accumulated buffer
+                            if buffer:
+                                try:
+                                    text = buffer.decode("utf-8", errors="ignore")
+
+                                    # Parse SSE event: may contain event: and multiple data: lines
+                                    event_name = None
+                                    data_lines = []
+                                    for sse_line in text.splitlines():
+                                        if sse_line.startswith("event:"):
+                                            event_name = sse_line.split(":", 1)[1].strip()
+                                        elif sse_line.startswith("data:"):
+                                            data_lines.append(sse_line.split(":", 1)[1].strip())
+
+                                    # SwiftMCP / spec-compliant servers often send an initial
+                                    # `event: endpoint` with a URL in data:. Accept that as
+                                    # a valid SSE handshake even though it's not JSON-RPC.
+                                    if event_name == "endpoint" and data_lines:
+                                        return True
+
+                                    if not data_lines:
+                                        return False
+
+                                    # For JSON-RPC style servers, the data payload must be a
+                                    # JSON-RPC 2.0 message.
+                                    payload = data_lines[-1]
+                                    import json
+                                    obj = json.loads(payload)
+                                    if obj.get("jsonrpc") != "2.0":
+                                        return False
+                                    return True
+                                except Exception:
+                                    return False
+                            continue
+                        # accumulate until blank line
+                        buffer += line + b"\n"
+                return False
+            except Exception:
+                return False
+
+        ok = _preflight_sse(url)
+        if not ok:
+            console.print(f"[red]{t('mcp_sse_preflight_failed')}[/red]")
+            console.print(f"[yellow]{t('mcp_sse_must_send')}[/yellow]")
+            console.print(t('mcp_sse_event_follow'))
+            example = (
+                "data: {\"jsonrpc\":\"2.0\", \"id\":\"1\", \"method\":\"server.ready\", \"params\":{}}\n\n"
+            )
+            console.print(example)
+            console.print(t('mcp_sse_include_headers'))
+            # Continue anyway; the lower-level client may handle it or produce a clearer error
 
         async def connect_and_test():
             params: MCPServerSseParams = {
                 "url": url,
                 "timeout": 10,  # Connection timeout
-                "sse_read_timeout": 300  # 5 minutes for SSE reads
+                "sse_read_timeout": 300,  # 5 minutes for SSE reads
+                # Request headers to encourage proper SSE behavior on server side
+                "headers": MCPUtil.get_default_auth_headers(
+                    {
+                        "Accept": "text/event-stream",
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                    }
+                ),
             }
-            # Add headers if provided
-            if headers:
-                params["headers"] = headers
-
             server = MCPServerSse(params, name=name, cache_tools_list=True)
 
             # Connect to the server with retry logic
@@ -749,20 +838,20 @@ Example: `/mcp add burp 13`
             # Store the server globally
             _GLOBAL_MCP_SERVERS[name] = server
 
-            console.print(f"[green]✓ Connected to SSE server '{name}' at {url}[/green]")
-            console.print(f"Available tools: {len(tools)}")
+            console.print(f"[green]✓ {t('mcp_connected_sse').format(name=name, url=url)}[/green]")
+            console.print(t('mcp_available_tools').format(count=len(tools)))
 
             # Show some tool names if available
             if tools:
                 tool_names = [tool.name for tool in tools[:5]]
                 if len(tools) > 5:
                     tool_names.append(f"... and {len(tools) - 5} more")
-                console.print(f"Tools: {', '.join(tool_names)}")
+                console.print(t('mcp_tools_list').format(tools=', '.join(tool_names)))
 
             return True
 
         except Exception as e:
-            console.print(f"[red]Error connecting to server: {e}[/red]")
+            console.print(f"[red]{t('mcp_error_connecting').format(error=e)}[/red]")
             # Clean up if connection failed
             if name in _GLOBAL_MCP_SERVERS:
                 del _GLOBAL_MCP_SERVERS[name]
@@ -780,16 +869,19 @@ Example: `/mcp add burp 13`
             True if successful
         """
         if name in _GLOBAL_MCP_SERVERS:
-            console.print(f"[yellow]Server '{name}' is already loaded and active.[/yellow]")
-            console.print(f"[dim]Use '/mcp remove {name}' first if you want to reload it.[/dim]")
+            console.print(f"[yellow]{t('mcp_server_already_loaded').format(name=name)}[/yellow]")
+            console.print(f"[dim]{t('mcp_server_remove_first').format(name=name)}[/dim]")
             return True
 
         console.print(
-            f"Starting stdio server '{name}' with command: {command} {' '.join(cmd_args)}"
+            t('mcp_starting_stdio').format(name=name, command=f"{command} {' '.join(cmd_args)}")
         )
 
         async def connect_and_test():
             params: MCPServerStdioParams = {"command": command, "args": cmd_args}
+            # Add safe defaults for stdio servers
+            # - Force unbuffered Python when applicable
+            # - Use replace error handler to avoid fatal decoding errors
             server = MCPServerStdio(params, name=name, cache_tools_list=True)
 
             # Connect to the server
@@ -797,6 +889,11 @@ Example: `/mcp add burp 13`
 
             # Test by listing tools
             tools = await server.list_tools()
+
+            # Quick sanity-check: Ensure tool metadata looks valid
+            for t in tools:
+                if not getattr(t, "name", None):
+                    raise RuntimeError("Invalid tool with empty name from stdio server")
 
             return server, tools
 
@@ -806,20 +903,20 @@ Example: `/mcp add burp 13`
             # Store the server globally
             _GLOBAL_MCP_SERVERS[name] = server
 
-            console.print(f"[green]✓ Started stdio server '{name}'[/green]")
-            console.print(f"Available tools: {len(tools)}")
+            console.print(f"[green]✓ {t('mcp_started_stdio').format(name=name)}[/green]")
+            console.print(t('mcp_available_tools').format(count=len(tools)))
 
             # Show some tool names if available
             if tools:
                 tool_names = [tool.name for tool in tools[:5]]
                 if len(tools) > 5:
                     tool_names.append(f"... and {len(tools) - 5} more")
-                console.print(f"Tools: {', '.join(tool_names)}")
+                console.print(t('mcp_tools_list').format(tools=', '.join(tool_names)))
 
             return True
 
         except Exception as e:
-            console.print(f"[red]Error starting server: {e}[/red]")
+            console.print(f"[red]{t('mcp_error_starting').format(error=e)}[/red]")
             # Clean up if connection failed
             if name in _GLOBAL_MCP_SERVERS:
                 del _GLOBAL_MCP_SERVERS[name]
@@ -835,15 +932,15 @@ Example: `/mcp add burp 13`
             True
         """
         if not _GLOBAL_MCP_SERVERS:
-            console.print("[yellow]No active MCP connections[/yellow]")
-            console.print("\nUse `/mcp help` to see how to load servers.")
+            console.print(f"[yellow]{t('mcp_no_active_connections')}[/yellow]")
+            console.print(f"\n{t('mcp_use_help')}")
             return True
 
-        table = Table(title="Active MCP Connections")
-        table.add_column("Name", style="cyan")
-        table.add_column("Type", style="magenta")
-        table.add_column("Details", style="green")
-        table.add_column("Tools", style="yellow")
+        table = Table(title=t('mcp_table_active_connections'))
+        table.add_column(t('mcp_col_name'), style="cyan")
+        table.add_column(t('mcp_col_type'), style="magenta")
+        table.add_column(t('mcp_col_details'), style="green")
+        table.add_column(t('mcp_col_tools'), style="yellow")
 
         for name, server in _GLOBAL_MCP_SERVERS.items():
             server_type = type(server).__name__.replace("MCPServer", "")
@@ -886,8 +983,8 @@ Example: `/mcp add burp 13`
             True if successful
         """
         if not args or len(args) < 2:
-            console.print("[red]Error: Invalid arguments[/red]")
-            console.print("Usage: /mcp add <server_name> <agent_name>")
+            console.print(f"[red]{t('mcp_error_invalid_args')}[/red]")
+            console.print(t('mcp_usage_add'))
             return False
 
         server_name = args[0]
@@ -895,8 +992,8 @@ Example: `/mcp add burp 13`
 
         # Check if server exists
         if server_name not in _GLOBAL_MCP_SERVERS:
-            console.print(f"[red]Error: Server '{server_name}' not found[/red]")
-            console.print("Use /mcp list to see active servers")
+            console.print(f"[red]{t('mcp_error_server_not_found').format(name=server_name)}[/red]")
+            console.print(t('mcp_use_list_servers'))
             return False
 
         # Get the agent
@@ -919,14 +1016,14 @@ Example: `/mcp add burp 13`
                 else:
                     raise ValueError("Not found")
             except Exception:
-                console.print(f"[red]Error: Agent '{agent_identifier}' not found[/red]")
+                console.print(f"[red]{t('mcp_error_agent_not_found').format(name=agent_identifier)}[/red]")
                 return False
 
         # Add the MCP server to the agent
         server = _GLOBAL_MCP_SERVERS[server_name]
 
         console.print(
-            f"Adding tools from MCP server '{server_name}' to agent '{agent_display_name}'..."
+            t('mcp_adding_tools').format(server=server_name, agent=agent_display_name)
         )
 
         # Validate the server connection before adding
@@ -939,20 +1036,20 @@ Example: `/mcp add burp 13`
                     return tools
                 except Exception:
                     console.print(
-                        "[yellow]Warning: Server connection may be lost, attempting to reconnect...[/yellow]"
+                        f"[yellow]{t('mcp_warn_reconnecting')}[/yellow]"
                     )
                     # Try to reconnect
                     await server.connect()
                     tools = await server.list_tools()
-                    console.print(f"[green]✓ Reconnected to server '{server_name}'[/green]")
+                    console.print(f"[green]✓ {t('mcp_reconnected').format(name=server_name)}[/green]")
                     return tools
 
             # Validate the connection and get tools
             mcp_tools = self._run_async(validate_connection())
 
         except Exception as e:
-            console.print(f"[red]Error: Cannot connect to server '{server_name}': {e}[/red]")
-            console.print("Try removing and reloading the server.")
+            console.print(f"[red]{t('mcp_error_cannot_connect').format(name=server_name, error=e)}[/red]")
+            console.print(t('mcp_try_reload'))
             return False
 
         # Get and display the tools
@@ -965,13 +1062,13 @@ Example: `/mcp add burp 13`
                 tools.append(function_tool)
 
             # Display tools table
-            table = Table(title=f"Adding tools to {agent_display_name}")
-            table.add_column("Tool", style="cyan")
-            table.add_column("Status", style="green")
-            table.add_column("Details", style="yellow")
+            table = Table(title=t('mcp_table_adding_tools').format(agent=agent_display_name))
+            table.add_column(t('mcp_col_tool'), style="cyan")
+            table.add_column(t('mcp_col_status'), style="green")
+            table.add_column(t('mcp_col_details'), style="yellow")
 
             for tool in tools:
-                table.add_row(tool.name, "Added", f"Available as: {tool.name}")
+                table.add_row(tool.name, t('mcp_status_added'), t('mcp_available_as').format(name=tool.name))
 
             console.print(table)
 
@@ -985,7 +1082,7 @@ Example: `/mcp add burp 13`
 
             # Add the new tools
             agent.tools.extend(tools)
-            
+
             # Persist the association
             # Get the agent's real name (not display name)
             agent_real_name = agent_identifier.lower()
@@ -999,12 +1096,11 @@ Example: `/mcp add burp 13`
                 idx = int(agent_identifier)
                 if 1 <= idx <= len(agent_list):
                     agent_real_name, _ = agent_list[idx - 1]
-            
+
             add_mcp_server_to_agent(agent_real_name, server_name)
 
             console.print(
-                f"[green]Added {len(tools)} tools from server "
-                f"'{server_name}' to agent '{agent_display_name}'.[/green]"
+                f"[green]{t('mcp_added_tools_count').format(count=len(tools), server=server_name, agent=agent_display_name)}[/green]"
             )
 
             # Test that the tools are accessible
@@ -1028,22 +1124,22 @@ Example: `/mcp add burp 13`
             )
             regular_tools_count = len(agent.tools) if hasattr(agent, "tools") else 0
 
-            console.print(f"[blue]Agent now has {regular_tools_count} tools total[/blue]")
+            console.print(f"[blue]{t('mcp_agent_tools_total').format(count=regular_tools_count)}[/blue]")
 
             # Test a simple tool invocation to make sure everything works
-            console.print("[cyan]Testing MCP tool connectivity...[/cyan]")
+            console.print(f"[cyan]{t('mcp_testing_connectivity')}[/cyan]")
             try:
                 if tools:
-                    console.print("[green]✓ MCP tools are ready for use![/green]")
+                    console.print(f"[green]✓ {t('mcp_tools_ready')}[/green]")
                 else:
-                    console.print("[yellow]Warning: No tools available from server[/yellow]")
+                    console.print(f"[yellow]{t('mcp_warn_no_tools')}[/yellow]")
             except Exception as e:
-                console.print(f"[yellow]Warning: Tool connectivity test failed: {e}[/yellow]")
+                console.print(f"[yellow]{t('mcp_warn_connectivity_failed').format(error=e)}[/yellow]")
 
             return True
 
         except Exception as e:
-            console.print(f"[red]Error adding tools: {e}[/red]")
+            console.print(f"[red]{t('mcp_error_adding_tools').format(error=e)}[/red]")
             return False
 
     def handle_remove(self, args: Optional[List[str]] = None) -> bool:
@@ -1056,14 +1152,14 @@ Example: `/mcp add burp 13`
             True if successful
         """
         if not args:
-            console.print("[red]Error: No server name specified[/red]")
-            console.print("Usage: /mcp remove <server_name>")
+            console.print(f"[red]{t('mcp_error_no_server_name')}[/red]")
+            console.print(t('mcp_usage_remove'))
             return False
 
         server_name = args[0]
 
         if server_name not in _GLOBAL_MCP_SERVERS:
-            console.print(f"[red]Error: Server '{server_name}' not found[/red]")
+            console.print(f"[red]{t('mcp_error_server_not_found').format(name=server_name)}[/red]")
             return False
 
         # Cleanup the server
@@ -1077,10 +1173,10 @@ Example: `/mcp add burp 13`
             self._run_async(cleanup_server())
             del _GLOBAL_MCP_SERVERS[server_name]
             _SERVER_INVOCATION_LOCKS.pop(server_name, None)
-            console.print(f"[green]✓ Removed MCP server '{server_name}'[/green]")
+            console.print(f"[green]✓ {t('mcp_removed_server').format(name=server_name)}[/green]")
             return True
         except Exception as e:
-            console.print(f"[red]Error removing server: {e}[/red]")
+            console.print(f"[red]{t('mcp_error_removing').format(error=e)}[/red]")
             # Remove from list anyway
             if server_name in _GLOBAL_MCP_SERVERS:
                 del _GLOBAL_MCP_SERVERS[server_name]
@@ -1096,17 +1192,17 @@ Example: `/mcp add burp 13`
             True if successful
         """
         if not _GLOBAL_MCP_SERVERS:
-            console.print("[yellow]No active MCP connections[/yellow]")
+            console.print(f"[yellow]{t('mcp_no_active_connections')}[/yellow]")
             return True
 
-        console.print("[cyan]Checking MCP server connections...[/cyan]")
+        console.print(f"[cyan]{t('mcp_checking_connections')}[/cyan]")
 
-        table = Table(title="MCP Server Status")
-        table.add_column("Name", style="cyan")
-        table.add_column("Type", style="magenta")
-        table.add_column("Status", style="bold")
-        table.add_column("Tools", style="yellow")
-        table.add_column("Details", style="dim")
+        table = Table(title=t('mcp_table_server_status'))
+        table.add_column(t('mcp_col_name'), style="cyan")
+        table.add_column(t('mcp_col_type'), style="magenta")
+        table.add_column(t('mcp_col_status'), style="bold")
+        table.add_column(t('mcp_col_tools'), style="yellow")
+        table.add_column(t('mcp_col_details'), style="dim")
 
         healthy_count = 0
 
@@ -1121,19 +1217,19 @@ Example: `/mcp add burp 13`
                     return len(tools), None
 
                 tools_count, error = self._run_async(test_connection())
-                status = "[green]✓ Healthy[/green]"
+                status = f"[green]✓ {t('mcp_status_healthy')}[/green]"
                 tools_str = str(tools_count)
-                details = "Connection active"
+                details = t('mcp_connection_active')
                 healthy_count += 1
 
             except Exception as e:
-                status = "[red]✗ Error[/red]"
+                status = f"[red]✗ {t('mcp_status_error')}[/red]"
                 tools_str = "N/A"
                 details = f"Error: {str(e)[:50]}..."
 
                 # Try to reconnect
                 try:
-                    console.print(f"[yellow]Attempting to reconnect to '{name}'...[/yellow]")
+                    console.print(f"[yellow]{t('mcp_attempting_reconnect').format(name=name)}[/yellow]")
 
                     async def reconnect():
                         await server.connect()
@@ -1141,14 +1237,14 @@ Example: `/mcp add burp 13`
                         return len(tools)
 
                     tools_count = self._run_async(reconnect())
-                    status = "[green]✓ Reconnected[/green]"
+                    status = f"[green]✓ {t('mcp_status_reconnected')}[/green]"
                     tools_str = str(tools_count)
-                    details = "Reconnected successfully"
+                    details = t('mcp_reconnected_success')
                     healthy_count += 1
 
                 except Exception as reconnect_error:
-                    status = "[red]✗ Failed[/red]"
-                    details = f"Reconnect failed: {str(reconnect_error)[:30]}..."
+                    status = f"[red]✗ {t('mcp_status_failed')}[/red]"
+                    details = t('mcp_reconnect_failed').format(error=str(reconnect_error)[:30])
 
             table.add_row(name, server_type, status, tools_str, details)
 
@@ -1157,11 +1253,11 @@ Example: `/mcp add burp 13`
         # Summary
         total_servers = len(_GLOBAL_MCP_SERVERS)
         if healthy_count == total_servers:
-            console.print(f"[green]✓ All {total_servers} MCP servers are healthy[/green]")
+            console.print(f"[green]✓ {t('mcp_all_healthy').format(count=total_servers)}[/green]")
         else:
             failed_count = total_servers - healthy_count
             console.print(
-                f"[yellow]⚠ {healthy_count}/{total_servers} servers healthy, {failed_count} failed[/yellow]"
+                f"[yellow]⚠ {t('mcp_health_summary').format(healthy=healthy_count, total=total_servers, failed=failed_count)}[/yellow]"
             )
 
         return True
@@ -1176,14 +1272,14 @@ Example: `/mcp add burp 13`
             True if successful
         """
         if not args:
-            console.print("[red]Error: No server name specified[/red]")
-            console.print("Usage: /mcp tools <server_name>")
+            console.print(f"[red]{t('mcp_error_no_server_name')}[/red]")
+            console.print(t('mcp_usage_tools'))
             return False
 
         server_name = args[0]
 
         if server_name not in _GLOBAL_MCP_SERVERS:
-            console.print(f"[red]Error: Server '{server_name}' not found[/red]")
+            console.print(f"[red]{t('mcp_error_server_not_found').format(name=server_name)}[/red]")
             return False
 
         server = _GLOBAL_MCP_SERVERS[server_name]
@@ -1196,16 +1292,16 @@ Example: `/mcp add burp 13`
             tools = self._run_async(get_tools())
 
             if not tools:
-                console.print(f"[yellow]No tools available from '{server_name}'[/yellow]")
+                console.print(f"[yellow]{t('mcp_no_tools_from').format(name=server_name)}[/yellow]")
                 return True
 
-            table = Table(title=f"Tools from '{server_name}'")
-            table.add_column("#", style="dim")
-            table.add_column("Name", style="cyan")
-            table.add_column("Description", style="green")
+            table = Table(title=t('mcp_table_tools_from').format(name=server_name))
+            table.add_column(t('mcp_col_num'), style="dim")
+            table.add_column(t('mcp_col_name'), style="cyan")
+            table.add_column(t('mcp_col_description'), style="green")
 
             for idx, tool in enumerate(tools, 1):
-                description = tool.description or "No description"
+                description = tool.description or t('mcp_no_description')
                 if len(description) > 60:
                     description = description[:57] + "..."
                 table.add_row(str(idx), tool.name, description)
@@ -1214,27 +1310,27 @@ Example: `/mcp add burp 13`
             return True
 
         except Exception as e:
-            console.print(f"[red]Error listing tools: {e}[/red]")
+            console.print(f"[red]{t('mcp_error_listing_tools').format(error=e)}[/red]")
             return False
 
     def handle_associations(self, args: Optional[List[str]] = None) -> bool:
         """Handle /mcp associations command to show agent-MCP associations.
-        
+
         Args:
             args: Optional list of command arguments (not used)
-            
+
         Returns:
             True
         """
         if not _AGENT_MCP_ASSOCIATIONS:
-            console.print("[yellow]No agent-MCP associations configured[/yellow]")
+            console.print(f"[yellow]{t('mcp_no_associations')}[/yellow]")
             return True
-            
-        table = Table(title="Agent-MCP Associations")
-        table.add_column("Agent", style="cyan")
-        table.add_column("MCP Servers", style="magenta")
-        table.add_column("Total Tools", style="yellow")
-        
+
+        table = Table(title=t('mcp_table_associations'))
+        table.add_column(t('mcp_col_agent'), style="cyan")
+        table.add_column(t('mcp_col_mcp_servers'), style="magenta")
+        table.add_column(t('mcp_col_total_tools'), style="yellow")
+
         for agent_name, server_names in _AGENT_MCP_ASSOCIATIONS.items():
             if server_names:
                 # Count total tools
@@ -1242,94 +1338,100 @@ Example: `/mcp add burp 13`
                 for server_name in server_names:
                     if server_name in _GLOBAL_MCP_SERVERS:
                         try:
+
                             async def count_tools(srv):
                                 tools = await srv.list_tools()
                                 return len(tools)
-                            
+
                             server = _GLOBAL_MCP_SERVERS[server_name]
                             tool_count = self._run_async(count_tools(server))
                             total_tools += tool_count
                         except Exception:
                             pass
-                
+
                 servers_str = ", ".join(server_names)
                 table.add_row(agent_name, servers_str, str(total_tools))
-        
+
         console.print(table)
         return True
 
     def handle_test(self, args: Optional[List[str]] = None) -> bool:
         """Handle /mcp test command to test server connectivity.
-        
+
         Args:
             args: List of command arguments
-            
+
         Returns:
             True if successful
         """
         if not args:
-            console.print("[red]Error: No server name specified[/red]")
-            console.print("Usage: /mcp test <server_name>")
+            console.print(f"[red]{t('mcp_error_no_server_name')}[/red]")
+            console.print(t('mcp_usage_test'))
             return False
-            
+
         server_name = args[0]
-        
+
         if server_name not in _GLOBAL_MCP_SERVERS:
-            console.print(f"[red]Error: Server '{server_name}' not found[/red]")
+            console.print(f"[red]{t('mcp_error_server_not_found').format(name=server_name)}[/red]")
             return False
-            
+
         server = _GLOBAL_MCP_SERVERS[server_name]
-        
-        console.print(f"[cyan]Testing MCP server '{server_name}'...[/cyan]")
-        
+
+        console.print(f"[cyan]{t('mcp_testing_server').format(name=server_name)}[/cyan]")
+
         try:
+
             async def test_server():
                 # Test 1: List tools
-                console.print("[yellow]Test 1: Listing tools...[/yellow]")
+                console.print(f"[yellow]{t('mcp_test_listing_tools')}[/yellow]")
                 tools = await server.list_tools()
-                console.print(f"[green]✓ Found {len(tools)} tools[/green]")
-                
+                console.print(f"[green]✓ {t('mcp_test_found_tools').format(count=len(tools))}[/green]")
+
                 # Test 2: Test a simple tool if available
                 if tools:
                     test_tool = tools[0]
-                    console.print(f"[yellow]Test 2: Testing tool '{test_tool.name}'...[/yellow]")
-                    
+                    console.print(f"[yellow]{t('mcp_test_testing_tool').format(name=test_tool.name)}[/yellow]")
+
                     # Create a test invocation
                     try:
                         # Use empty input for testing
                         result = await server.call_tool(test_tool.name, {})
-                        console.print(f"[green]✓ Tool invocation successful[/green]")
+                        console.print(f"[green]✓ {t('mcp_test_tool_success')}[/green]")
                         if result and result.content:
-                            console.print(f"[dim]Result preview: {str(result.content[0])[:100]}...[/dim]")
+                            console.print(
+                                f"[dim]Result preview: {str(result.content[0])[:100]}...[/dim]"
+                            )
                     except Exception as tool_error:
-                        console.print(f"[yellow]⚠ Tool test failed (this is normal for tools requiring input)[/yellow]")
+                        console.print(
+                            f"[yellow]⚠ {t('mcp_test_tool_failed')}[/yellow]"
+                        )
                         console.print(f"[dim]Error: {str(tool_error)[:100]}[/dim]")
-                
+
                 # Test 3: Test reconnection
-                console.print("[yellow]Test 3: Testing reconnection...[/yellow]")
-                if hasattr(server, 'session'):
+                console.print(f"[yellow]{t('mcp_test_reconnection')}[/yellow]")
+                if hasattr(server, "session"):
                     old_session = server.session
                     server.session = None
                 await server.connect()
-                console.print("[green]✓ Reconnection successful[/green]")
-                
+                console.print(f"[green]✓ {t('mcp_test_reconnect_success')}[/green]")
+
                 return True
-            
+
             self._run_async(test_server())
-            console.print(f"[green]✓ All tests passed for server '{server_name}'[/green]")
+            console.print(f"[green]✓ {t('mcp_test_all_passed').format(name=server_name)}[/green]")
             return True
-            
+
         except Exception as e:
-            console.print(f"[red]✗ Test failed: {type(e).__name__}: {str(e)}[/red]")
+            console.print(f"[red]✗ {t('mcp_test_failed').format(error=f'{type(e).__name__}: {str(e)}')}[/red]")
             return False
 
 
 def get_mcp_servers_for_agent(agent_name: str) -> List[str]:
     """Get list of MCP server names associated with an agent.
-    
+
     Args:
         agent_name: Name of the agent
-        
+
     Returns:
         List of MCP server names
     """
@@ -1338,7 +1440,7 @@ def get_mcp_servers_for_agent(agent_name: str) -> List[str]:
 
 def add_mcp_server_to_agent(agent_name: str, server_name: str):
     """Associate an MCP server with an agent.
-    
+
     Args:
         agent_name: Name of the agent
         server_name: Name of the MCP server
@@ -1346,14 +1448,14 @@ def add_mcp_server_to_agent(agent_name: str, server_name: str):
     agent_name_lower = agent_name.lower()
     if agent_name_lower not in _AGENT_MCP_ASSOCIATIONS:
         _AGENT_MCP_ASSOCIATIONS[agent_name_lower] = []
-    
+
     if server_name not in _AGENT_MCP_ASSOCIATIONS[agent_name_lower]:
         _AGENT_MCP_ASSOCIATIONS[agent_name_lower].append(server_name)
 
 
 def remove_mcp_server_from_agent(agent_name: str, server_name: str):
     """Remove an MCP server association from an agent.
-    
+
     Args:
         agent_name: Name of the agent
         server_name: Name of the MCP server
@@ -1366,29 +1468,31 @@ def remove_mcp_server_from_agent(agent_name: str, server_name: str):
 
 def get_mcp_tools_for_agent(agent_name: str) -> List[FunctionTool]:
     """Get all MCP tools for an agent based on associations.
-    
+
     Args:
         agent_name: Name of the agent
-        
+
     Returns:
         List of FunctionTool objects
     """
     tools = []
     server_names = get_mcp_servers_for_agent(agent_name)
-    
+
     for server_name in server_names:
         if server_name in _GLOBAL_MCP_SERVERS:
             server = _GLOBAL_MCP_SERVERS[server_name]
             try:
                 # Get tools from server synchronously
                 import asyncio
+
                 async def get_tools():
                     return await server.list_tools()
-                
+
                 # Try to get existing loop or create new one
                 try:
                     loop = asyncio.get_running_loop()
                     import concurrent.futures
+
                     def run_in_thread():
                         new_loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(new_loop)
@@ -1396,21 +1500,21 @@ def get_mcp_tools_for_agent(agent_name: str) -> List[FunctionTool]:
                             return new_loop.run_until_complete(get_tools())
                         finally:
                             new_loop.close()
-                    
+
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         future = executor.submit(run_in_thread)
                         mcp_tools = future.result(timeout=10)
                 except RuntimeError:
                     mcp_tools = asyncio.run(get_tools())
-                
+
                 # Convert to function tools
                 for mcp_tool in mcp_tools:
                     function_tool = GlobalMCPUtil.to_function_tool(mcp_tool, server_name)
                     tools.append(function_tool)
-                    
+
             except Exception as e:
                 logging.warning(f"Failed to get tools from MCP server '{server_name}': {e}")
-    
+
     return tools
 
 
