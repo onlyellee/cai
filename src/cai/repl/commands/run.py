@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.table import Table
 
 from cai.agents import get_available_agents
+from cai.i18n import t
 from cai.repl.commands.base import Command, register_command
 from cai.repl.commands.parallel import PARALLEL_CONFIGS, ParallelConfig
 
@@ -47,9 +48,9 @@ class RunCommand(Command):
         """
         parallel_count = int(os.getenv("CAI_PARALLEL", "1"))
         if parallel_count < 2:
-            console.print("[red]Error: /run command is only available in parallel mode[/red]")
+            console.print(f"[red]{t('cmd_run_parallel_only')}[/red]")
             console.print(
-                "[yellow]Enable parallel mode first with appropriate environment variables[/yellow]"
+                f"[yellow]{t('cmd_run_enable_parallel')}[/yellow]"
             )
             return False
 
@@ -62,7 +63,7 @@ class RunCommand(Command):
         # Default behavior - execute queued prompts
         if not QUEUED_PROMPTS:
             console.print(
-                "[yellow]No prompts queued. Use '/run queue <agent> <prompt>' to add prompts.[/yellow]"
+                f"[yellow]{t('cmd_run_no_prompts')}[/yellow]"
             )
             return True
 
@@ -73,7 +74,7 @@ class RunCommand(Command):
             prompt = prompt_data["prompt"]
             PARALLEL_CONFIGS.append(ParallelConfig(agent_key, None, prompt))
 
-        console.print(f"[bold green]Executing {len(QUEUED_PROMPTS)} queued prompts...[/bold green]")
+        console.print(f"[bold green]{t('cmd_run_executing', count=len(QUEUED_PROMPTS))}[/bold green]")
 
         # Clear the queue after setting up configs
         QUEUED_PROMPTS.clear()
@@ -81,7 +82,7 @@ class RunCommand(Command):
         # Return a special marker that the CLI will recognize
         # The actual execution will happen in the main CLI loop
         console.print(
-            "[cyan]Prompts configured for parallel execution. Processing will begin now.[/cyan]"
+            f"[cyan]{t('cmd_run_processing')}[/cyan]"
         )
 
         return True
@@ -96,8 +97,8 @@ class RunCommand(Command):
             True if successful
         """
         if not args or len(args) < 2:
-            console.print("[red]Error: Agent and prompt required[/red]")
-            console.print("Usage: /run queue <agent_key> <prompt>")
+            console.print(f"[red]{t('cmd_run_agent_prompt_required')}[/red]")
+            console.print(t('cmd_run_usage_queue'))
             return False
 
         agent_key = args[0]
@@ -106,8 +107,8 @@ class RunCommand(Command):
         # Validate agent exists
         available_agents = get_available_agents()
         if agent_key not in available_agents:
-            console.print(f"[red]Error: Unknown agent '{agent_key}'[/red]")
-            console.print("Available agents:")
+            console.print(f"[red]{t('cmd_run_unknown_agent', agent_key=agent_key)}[/red]")
+            console.print(t('cmd_run_available_agents'))
             for key in available_agents:
                 console.print(f"  • {key}")
             return False
@@ -116,8 +117,8 @@ class RunCommand(Command):
         QUEUED_PROMPTS.append({"agent": agent_key, "prompt": prompt})
 
         agent_name = getattr(available_agents[agent_key], "name", agent_key)
-        console.print(f"[green]Queued prompt for {agent_name}:[/green] {prompt[:50]}...")
-        console.print(f"[dim]Total queued: {len(QUEUED_PROMPTS)}[/dim]")
+        console.print(f"[green]{t('cmd_run_queued', agent_name=agent_name, prompt=prompt[:50])}[/green]")
+        console.print(f"[dim]{t('cmd_run_total_queued', count=len(QUEUED_PROMPTS))}[/dim]")
 
         return True
 
@@ -131,7 +132,7 @@ class RunCommand(Command):
             True
         """
         if not QUEUED_PROMPTS:
-            console.print("[yellow]No prompts queued[/yellow]")
+            console.print(f"[yellow]{t('cmd_run_no_prompts')}[/yellow]")
             return True
 
         table = Table(title="Queued Prompts for Parallel Execution")
@@ -157,8 +158,8 @@ class RunCommand(Command):
             table.add_row(str(idx), agent_name, prompt_display)
 
         console.print(table)
-        console.print(f"\n[bold]Total queued: {len(QUEUED_PROMPTS)}[/bold]")
-        console.print("[dim]Use '/run' to execute all queued prompts[/dim]")
+        console.print(f"\n[bold]{t('cmd_run_total_queued', count=len(QUEUED_PROMPTS))}[/bold]")
+        console.print(f"[dim]{t('cmd_run_use_run')}[/dim]")
 
         return True
 
@@ -174,7 +175,7 @@ class RunCommand(Command):
         count = len(QUEUED_PROMPTS)
         QUEUED_PROMPTS.clear()
 
-        console.print(f"[green]Cleared {count} queued prompts[/green]")
+        console.print(f"[green]{t('cmd_run_cleared', count=count)}[/green]")
         return True
 
     def handle_remove(self, args: Optional[List[str]] = None) -> bool:
@@ -187,8 +188,8 @@ class RunCommand(Command):
             True if successful
         """
         if not args:
-            console.print("[red]Error: Index required[/red]")
-            console.print("Usage: /run remove <index>")
+            console.print(f"[red]{t('cmd_run_index_required')}[/red]")
+            console.print(t('cmd_run_usage_remove'))
             return False
 
         try:
@@ -200,7 +201,7 @@ class RunCommand(Command):
             console.print(f"[green]Removed prompt:[/green] {removed['prompt'][:50]}...")
             return True
         except ValueError:
-            console.print(f"[red]Error: Invalid index '{args[0]}'[/red]")
+            console.print(f"[red]{t('cmd_run_invalid_index', index=args[0])}[/red]")
             return False
 
 

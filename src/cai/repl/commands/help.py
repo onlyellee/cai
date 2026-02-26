@@ -15,6 +15,7 @@ except ImportError as exc:
         "The 'rich' package is required. Please install it with: pip install rich"
     ) from exc
 
+from cai.i18n import t
 from cai.repl.commands.base import COMMAND_ALIASES, COMMANDS, Command, register_command
 
 try:
@@ -1062,37 +1063,37 @@ class HelpCommand(Command):
         for category, color, commands in all_commands:
             console.print(f"\n[bold {color}]{category}[/bold {color}]")
             table = Table(show_header=True, header_style="bold")
-            table.add_column("Command", style="cyan")
-            table.add_column("Aliases", style="green")
-            table.add_column("Description", style="white")
+            table.add_column(t('help_command'), style="cyan")
+            table.add_column(t('help_aliases'), style="green")
+            table.add_column(t('help_description'), style="white")
             
             for cmd, aliases, desc in commands:
                 table.add_row(cmd, aliases, desc)
             
             console.print(table)
 
-        console.print("\n[dim]Use /help <command> for detailed information about any command.[/dim]")
+        console.print(f"\n[dim]{t('help_detail_hint')}[/dim]")
         return True
 
     def handle_quick(self, _: Optional[List[str]] = None) -> bool:
         """Show quick reference guide."""
         console.print(
             Panel(
-                "[bold]CAI Quick Reference[/bold]",
-                title="⚡ Quick Start",
+                f"[bold]{t('help_quick_ref')}[/bold]",
+                title=f"⚡ {t('help_quick_start')}",
                 border_style="yellow",
             )
         )
 
         # Essential commands
-        console.print("\n[bold yellow]Essential Commands:[/bold yellow]")
+        console.print(f"\n[bold yellow]{t('help_essential_commands')}[/bold yellow]")
         quick_ref = [
-            ("[cyan]/agent list[/cyan]", "See available agents"),
-            ("[cyan]/agent select red_teamer[/cyan]", "Switch to red team agent"),
-            ("[cyan]/model gpt-4o[/cyan]", "Change to GPT-4"),
-            ("[cyan]/shell ls -la[/cyan]", "Run shell command"),
-            ("[cyan]/config[/cyan]", "View all settings"),
-            ("[cyan]/help <topic>[/cyan]", "Get detailed help"),
+            ("[cyan]/agent list[/cyan]", t('help_see_agents')),
+            ("[cyan]/agent select red_teamer[/cyan]", t('help_switch_agent')),
+            ("[cyan]/model gpt-4o[/cyan]", t('help_change_model')),
+            ("[cyan]/shell ls -la[/cyan]", t('help_run_shell')),
+            ("[cyan]/config[/cyan]", t('help_view_settings')),
+            ("[cyan]/help <topic>[/cyan]", t('help_get_help')),
         ]
         
         table = Table(show_header=False, box=None)

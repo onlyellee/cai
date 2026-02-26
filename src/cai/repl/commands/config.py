@@ -10,6 +10,7 @@ from rich.console import Console  # pylint: disable=import-error
 from rich.table import Table  # pylint: disable=import-error
 
 # Local imports
+from cai.i18n import t
 from cai.repl.commands.base import Command, register_command
 
 console = Console()
@@ -272,7 +273,7 @@ class ConfigCommand(Command):
             True if successful
         """
         table = Table(
-            title="Environment Variables",
+            title=t('config_env_vars'),
             show_header=True,
             header_style="bold yellow"
         )
@@ -297,7 +298,7 @@ class ConfigCommand(Command):
 
         console.print(table)
         console.print(
-            "\nUsage: /config set <number> <value> to configure a variable"
+            f"\n{t('config_usage_set')}"
         )
         return True
 
@@ -312,7 +313,7 @@ class ConfigCommand(Command):
         """
         if not args or len(args) < 1:
             console.print(
-                "[yellow]Usage: /config get <number>[/yellow]"
+                f"[yellow]{t('config_usage_get')}[/yellow]"
             )
             return False
 
@@ -320,7 +321,7 @@ class ConfigCommand(Command):
             var_num = int(args[0])
             if var_num not in ENV_VARS:
                 console.print(
-                    f"[red]Error: Variable number {var_num} not found[/red]"
+                    f"[red]{t('config_var_not_found', num=var_num)}[/red]"
                 )
                 return False
 
@@ -336,7 +337,7 @@ class ConfigCommand(Command):
             return True
         except ValueError:
             console.print(
-                "[red]Error: Variable number must be an integer[/red]"
+                f"[red]{t('config_var_invalid')}[/red]"
             )
             return False
 
@@ -351,7 +352,7 @@ class ConfigCommand(Command):
         """
         if not args or len(args) < 2:
             console.print(
-                "[yellow]Usage: /config set <number> <value>[/yellow]"
+                f"[yellow]{t('config_usage_set')}[/yellow]"
             )
             return False
 
@@ -359,7 +360,7 @@ class ConfigCommand(Command):
             var_num = int(args[0])
             if var_num not in ENV_VARS:
                 console.print(
-                    f"[red]Error: Variable number {var_num} not found[/red]"
+                    f"[red]{t('config_var_not_found', num=var_num)}[/red]"
                 )
                 return False
 
@@ -371,13 +372,13 @@ class ConfigCommand(Command):
             set_env_var(var_name, value)
 
             console.print(
-                f"[green]Set {var_name} to '{value}' "
+                f"[green]{t('config_var_set', var_name=var_name, value=value)} "
                 f"(was: '{old_value}')[/green]"
             )
             return True
         except ValueError:
             console.print(
-                "[red]Error: Variable number must be an integer[/red]"
+                f"[red]{t('config_var_invalid')}[/red]"
             )
             return False
 
