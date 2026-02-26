@@ -319,6 +319,9 @@ from cai.sdk.agents.run_to_jsonl import get_session_recorder
 from cai.sdk.agents.global_usage_tracker import GLOBAL_USAGE_TRACKER
 from cai.sdk.agents.stream_events import RunItemStreamEvent
 
+# CAI i18n
+from cai.i18n import t
+
 # CAI utility imports
 from cai.util import (
     color,
@@ -527,7 +530,7 @@ def run_cai_cli(
             if turn_limit_reached and turn_count < max_turns:
                 turn_limit_reached = False
                 console.print(
-                    "[green]Turn limit increased. You can now continue using CAI.[/green]"
+                    f"[green]{t('turn_limit_increased')}[/green]"
                 )
 
         # Check if max turns is reached
@@ -535,13 +538,13 @@ def run_cai_cli(
             if not turn_limit_reached:
                 turn_limit_reached = True
                 console.print(
-                    f"[bold red]Error: Maximum turn limit ({int(max_turns)}) reached.[/bold red]"
+                    f"[bold red]{t('error_max_turns', max_turns=int(max_turns))}[/bold red]"
                 )
                 console.print(
-                    "[yellow]You must increase the limit using the /config command: /config CAI_MAX_TURNS=<new_value>[/yellow]"
+                    f"[yellow]{t('config_increase_turns')}[/yellow]"
                 )
                 console.print(
-                    "[yellow]Only CLI commands (starting with '/') will be processed until the limit is increased.[/yellow]"
+                    f"[yellow]{t('only_cli_commands')}[/yellow]"
                 )
 
         try:
@@ -683,7 +686,7 @@ def run_cai_cli(
                     logger = logging.getLogger(__name__)
                     logger.debug(f"Error switching agent: {str(e)}")
                     if os.getenv("CAI_DEBUG", "1") == "2":
-                        console.print(f"[red]Error switching agent: {str(e)}[/red]")
+                        console.print(f"[red]{t('error_switch_agent', error=str(e))}[/red]")
 
             if not force_until_flag and ctf_init != 0:
                 # Use initial prompt on first iteration if provided
@@ -960,10 +963,10 @@ def run_cai_cli(
                 and not user_input.startswith("$")
             ):
                 console.print(
-                    "[bold red]Error: Turn limit reached. Only CLI commands are allowed.[/bold red]"
+                    f"[bold red]{t('error_turn_limit')}[/bold red]"
                 )
                 console.print(
-                    "[yellow]Please use /config to increase CAI_MAX_TURNS limit.[/yellow]"
+                    f"[yellow]{t('increase_turns_hint')}[/yellow]"
                 )
                 # Skip processing this input but continue the main loop
                 stop_active_timer()
@@ -1320,7 +1323,7 @@ def run_cai_cli(
 
                 # If command wasn't recognized, show error (skip for /shell or /s)
                 if command not in ("/shell", "/s"):
-                    console.print(f"[red]Command failed or unknown: {command}[/red]")
+                    console.print(f"[red]{t('command_failed', command=command)}[/red]")
                 continue
             from rich.text import Text
 
@@ -1587,14 +1590,13 @@ def run_cai_cli(
                         # Display a user-friendly warning instead of crashing (streaming mode)
                         guardrail_name = e.guardrail_result.guardrail.get_name()
                         reason = e.guardrail_result.output.output_info.get("reason", "Security policy violation")
-                        
-                        # Use red color for the warning message
-                        print(f"\n\033[91m🛡️  SECURITY GUARDRAIL TRIGGERED\033[0m")
-                        print(f"\033[91mGuardrail: {guardrail_name}\033[0m")
-                        print(f"\033[91mReason: {reason}\033[0m")
-                        print(f"\033[93mThe agent's output was blocked for security reasons.\033[0m")
-                        print(f"\033[96mYou can continue the conversation with a different request.\033[0m\n")
-                        
+
+                        print(f"\n\033[91m🛡️  {t('guardrail_triggered')}\033[0m")
+                        print(f"\033[91m{t('guardrail_name', name=guardrail_name)}\033[0m")
+                        print(f"\033[91m{t('guardrail_reason', reason=reason)}\033[0m")
+                        print(f"\033[93m{t('guardrail_output_blocked')}\033[0m")
+                        print(f"\033[96m{t('guardrail_continue')}\033[0m\n")
+
                         # Continue the conversation loop instead of crashing
                         continue
                     except KeyboardInterrupt:
@@ -1622,13 +1624,12 @@ def run_cai_cli(
                                 # Display a user-friendly warning instead of crashing (new event loop)
                                 guardrail_name = e.guardrail_result.guardrail.get_name()
                                 reason = e.guardrail_result.output.output_info.get("reason", "Security policy violation")
-                                
-                                # Use red color for the warning message
-                                print(f"\n\033[91m🛡️  SECURITY GUARDRAIL TRIGGERED\033[0m")
-                                print(f"\033[91mGuardrail: {guardrail_name}\033[0m")
-                                print(f"\033[91mReason: {reason}\033[0m")
-                                print(f"\033[93mThe agent's output was blocked for security reasons.\033[0m")
-                                print(f"\033[96mYou can continue the conversation with a different request.\033[0m\n")
+
+                                print(f"\n\033[91m🛡️  {t('guardrail_triggered')}\033[0m")
+                                print(f"\033[91m{t('guardrail_name', name=guardrail_name)}\033[0m")
+                                print(f"\033[91m{t('guardrail_reason', reason=reason)}\033[0m")
+                                print(f"\033[93m{t('guardrail_output_blocked')}\033[0m")
+                                print(f"\033[96m{t('guardrail_continue')}\033[0m\n")
                                 
                                 # Close the loop and continue the conversation loop
                                 new_loop.close()
@@ -1649,20 +1650,19 @@ def run_cai_cli(
                             if hasattr(e.guardrail_result, 'output') and e.guardrail_result.output:
                                 reason = e.guardrail_result.output.output_info.get("reason", reason)
                         
-                        # Use red color for the warning message
-                        print(f"\n\033[91m🛡️  INPUT SECURITY GUARDRAIL TRIGGERED\033[0m")
-                        print(f"\033[91mReason: {reason}\033[0m")
-                        print(f"\033[93mYour input was blocked for security reasons.\033[0m")
-                        
+                        print(f"\n\033[91m🛡️  {t('guardrail_input_triggered')}\033[0m")
+                        print(f"\033[91m{t('guardrail_reason', reason=reason)}\033[0m")
+                        print(f"\033[93m{t('guardrail_input_blocked')}\033[0m")
+
                         # Check if this is likely due to conversation history
                         if "base64" in reason.lower() or "pattern" in reason.lower():
-                            print(f"\n\033[96mThis may be due to malicious content in the conversation history.\033[0m")
-                            print(f"\033[96mOptions:\033[0m")
-                            print(f"  1. Type \033[92m/clear\033[0m to clear the conversation history")
-                            print(f"  2. Type \033[92m/config set 26 false\033[0m to temporarily disable guardrails")
-                            print(f"  3. Type \033[92m/exit\033[0m to exit CAI")
+                            print(f"\n\033[96m{t('guardrail_history_warning')}\033[0m")
+                            print(f"\033[96m{t('guardrail_options')}\033[0m")
+                            print(f"  {t('guardrail_option_clear')}")
+                            print(f"  {t('guardrail_option_disable')}")
+                            print(f"  {t('guardrail_option_exit')}")
                         else:
-                            print(f"\033[96mPlease rephrase your request or try a different approach.\033[0m\n")
+                            print(f"\033[96m{t('guardrail_rephrase')}\033[0m\n")
                         
                         # Continue the conversation loop instead of crashing
                         continue
@@ -1671,12 +1671,11 @@ def run_cai_cli(
                         guardrail_name = e.guardrail_result.guardrail.get_name()
                         reason = e.guardrail_result.output.output_info.get("reason", "Security policy violation")
                         
-                        # Use red color for the warning message
-                        print(f"\n\033[91m🛡️  SECURITY GUARDRAIL TRIGGERED\033[0m")
-                        print(f"\033[91mGuardrail: {guardrail_name}\033[0m")
-                        print(f"\033[91mReason: {reason}\033[0m")
-                        print(f"\033[93mThe agent's output was blocked for security reasons.\033[0m")
-                        print(f"\033[96mYou can continue the conversation with a different request.\033[0m\n")
+                        print(f"\n\033[91m🛡️  {t('guardrail_triggered')}\033[0m")
+                        print(f"\033[91m{t('guardrail_name', name=guardrail_name)}\033[0m")
+                        print(f"\033[91m{t('guardrail_reason', reason=reason)}\033[0m")
+                        print(f"\033[93m{t('guardrail_output_blocked')}\033[0m")
+                        print(f"\033[96m{t('guardrail_continue')}\033[0m\n")
                         
                         # Continue the conversation loop instead of crashing
                         continue
@@ -1791,8 +1790,8 @@ def run_cai_cli(
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 tb_info = traceback.extract_tb(exc_traceback)
                 filename, line, func, text = tb_info[-1]
-                console.print(f"[bold red]Error: {str(e)}[/bold red]")
-                console.print(f"[bold red]Traceback: {tb_info}[/bold red]")
+                console.print(f"[bold red]{t('error_general', error=str(e))}[/bold red]")
+                console.print(f"[bold red]{t('error_traceback', tb_info=tb_info)}[/bold red]")
             else:
                 # In normal mode, just log the error
                 logger = logging.getLogger(__name__)
@@ -1841,7 +1840,7 @@ def main():
     if not patch_applied:
         print(
             color(
-                "Something went wrong patching LiteLLM fix_litellm_transcription_annotations",
+                t('error_litellm_patch'),
                 color="red",
             )
         )
